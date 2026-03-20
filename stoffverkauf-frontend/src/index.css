@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
+html {
+  scroll-behavior: smooth;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 275 30% 98%;
+    --foreground: 280 100% 18%;
+
+    --card: 275 30% 97%;
+    --card-foreground: 280 100% 18%;
+
+    --popover: 275 20% 99%;
+    --popover-foreground: 280 100% 18%;
+
+    --primary: 280 100% 18%;
+    --primary-foreground: 275 30% 98%;
+
+    --secondary: 274 43% 85%;
+    --secondary-foreground: 280 100% 22%;
+
+    --muted: 274 30% 92%;
+    --muted-foreground: 272 30% 42%;
+
+    --accent: 271 100% 35%;
+    --accent-foreground: 275 30% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 274 30% 88%;
+    --input: 274 30% 88%;
+    --ring: 271 100% 35%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 275 30% 97%;
+    --sidebar-foreground: 280 100% 22%;
+    --sidebar-primary: 280 100% 18%;
+    --sidebar-primary-foreground: 275 30% 98%;
+    --sidebar-accent: 274 43% 85%;
+    --sidebar-accent-foreground: 280 100% 22%;
+    --sidebar-border: 274 30% 88%;
+    --sidebar-ring: 271 100% 35%;
+
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+
+    --gradient-hero: linear-gradient(135deg, hsl(275 30% 96%), hsl(274 43% 92%));
+    --gradient-accent: linear-gradient(135deg, hsl(271 100% 35%), hsl(272 58% 56%));
+    --shadow-soft: 0 4px 20px -4px hsl(280 100% 18% / 0.08);
+    --shadow-card: 0 2px 12px -2px hsl(280 100% 18% / 0.06);
+    --shadow-elevated: 0 12px 40px -8px hsl(280 100% 18% / 0.12);
+  }
+
+  .dark {
+    --background: 280 40% 6%;
+    --foreground: 274 40% 92%;
+    --card: 280 35% 9%;
+    --card-foreground: 274 40% 92%;
+    --popover: 280 35% 9%;
+    --popover-foreground: 274 40% 92%;
+    --primary: 274 60% 69%;
+    --primary-foreground: 280 40% 6%;
+    --secondary: 280 30% 16%;
+    --secondary-foreground: 274 40% 92%;
+    --muted: 280 25% 18%;
+    --muted-foreground: 274 25% 55%;
+    --accent: 272 58% 56%;
+    --accent-foreground: 280 40% 6%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 280 25% 18%;
+    --input: 280 25% 18%;
+    --ring: 272 58% 56%;
+    --sidebar-background: 280 40% 6%;
+    --sidebar-foreground: 274 40% 92%;
+    --sidebar-primary: 274 60% 69%;
+    --sidebar-primary-foreground: 280 40% 6%;
+    --sidebar-accent: 280 30% 16%;
+    --sidebar-accent-foreground: 274 40% 92%;
+    --sidebar-border: 280 25% 18%;
+    --sidebar-ring: 272 58% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .text-gradient-accent {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .bg-hero-gradient {
+    background: var(--gradient-hero);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+}
+
+/* Sharpen product images */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
