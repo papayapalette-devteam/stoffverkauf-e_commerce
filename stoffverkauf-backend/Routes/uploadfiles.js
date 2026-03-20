@@ -1,12 +1,13 @@
 const express = require("express");
-const { uploadToCloudinary } = require("../controllers/upload-files/upload");
+
 const router = express.Router();
-const upload=require('../middlewares/file')
+const upload=require('../middlewares/file');
+const { uploadToCloudinary } = require("../Controllers/upload-files/upload");
 
 
 
 
-router.post("/upload-files",upload.any("files"),  uploadToCloudinary);
+router.post("/upload-files",upload.any("files"), uploadToCloudinary);
 
 
 
