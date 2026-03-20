@@ -46,7 +46,7 @@ app.get('/',(req,res)=>
 // ===============================================
 
 
-app.use('/api/upload',require('./routes/uploadfiles'));
+app.use('/api/upload',require('./Routes/uploadfiles'));
 
 app.use('/api/products',require('./Routes/add_product'));
 
