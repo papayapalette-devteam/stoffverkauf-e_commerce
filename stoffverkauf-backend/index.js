@@ -24,7 +24,7 @@ app.use('/images', express.static(path.join(__dirname, 'images')));
 const corsOptions = {
   origin: [
     "https://admin.made4ever.in",
-    "https://bureau.made4ever.in",
+    "https://stoffverkauf-e-commerce-1.onrender.com",
     "http://localhost:8080",
     "http://localhost:3000",
   ],
