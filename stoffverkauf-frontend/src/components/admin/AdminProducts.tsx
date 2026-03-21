@@ -901,12 +901,12 @@ const [isLoading, setIsLoading] = useState(false);
               <div>
                 <label className="text-sm font-medium text-foreground block mb-1">{de ? "SEO-Titel (max. 60 Zeichen)" : "SEO Title (max. 60 chars)"}</label>
                 <input value={form.seoTitle} onChange={e => setForm({ ...form, seoTitle: e.target.value })} maxLength={60} className={inputClass} />
-                <p className="text-xs text-muted-foreground mt-1">{form.seoTitle.length}/60</p>
+                {/* <p className="text-xs text-muted-foreground mt-1">{form?.seoTitle?.length}/60</p> */}
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground block mb-1">{de ? "Meta-Beschreibung (max. 160 Zeichen)" : "Meta Description (max. 160 chars)"}</label>
                 <textarea value={form.seoDescription} onChange={e => setForm({ ...form, seoDescription: e.target.value })} rows={3} maxLength={160} className={inputClass + " resize-none"} />
-                <p className="text-xs text-muted-foreground mt-1">{form.seoDescription.length}/160</p>
+                {/* <p className="text-xs text-muted-foreground mt-1">{form?.seoDescription?.length}/160</p> */}
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground block mb-1">{de ? "Keywords (kommagetrennt)" : "Keywords (comma-separated)"}</label>
