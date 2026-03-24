@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import api from "../../api";
 import axios from "axios";
 
-const BestsellerCarousel = () => {
+const PremiumSellerCarousel = () => {
   const { t, lang } = useI18n();
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
@@ -96,7 +96,7 @@ const [products, setproducts] = useState<ProductForm[]>([]);
 useEffect(() => {
   const fetchProducts = async () => {
     try {
-      const resp = await api.get("api/products/get-product-by-badge/Bestseller", {
+      const resp = await api.get("api/products/get-product-by-badge/Premium", {
         params: { page, limit },
       });
 
@@ -123,10 +123,10 @@ useEffect(() => {
         <div className="flex items-end justify-between mb-10">
           <div>
             <h2 className="font-display text-3xl lg:text-4xl font-bold text-foreground">
-              {t("best.title")}
+              {/* {t("best.title")} */}Premium Products
             </h2>
             <p className="text-muted-foreground mt-2 font-body">
-              {t("best.subtitle")}
+              {/* {t("best.subtitle")} */}Our customers' most popular premium fabrics
             </p>
           </div>
           <div className="hidden sm:flex gap-2">
@@ -259,8 +259,9 @@ useEffect(() => {
     Next
   </button>
 </div>
+
     </section>
   );
 };
 
-export default BestsellerCarousel;
+export default PremiumSellerCarousel;

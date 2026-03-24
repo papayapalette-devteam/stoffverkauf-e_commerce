@@ -80,8 +80,8 @@ const AdminPageEditor = () => {
         <div className="space-y-4">
           {Object.values(editData).map((section) => (
             <div key={section.id} className="bg-card rounded-xl border border-border p-5 shadow-card space-y-3">
-              <div className="flex items-start justify-between">
-                <p className="text-xs text-muted-foreground font-mono">{section.id}</p>
+              <div className="flex items-start justify-end">
+                {/* <p className="text-xs text-muted-foreground font-mono">{section.id}</p> */}
                 <button onClick={() => handleRemoveSection(section.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors">
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </button>

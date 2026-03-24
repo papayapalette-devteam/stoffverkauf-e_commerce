@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { User, Mail, Phone, MapPin, Edit3, Package, Heart, Settings, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/SEO";
 import { toast } from "sonner";
+import api from "../../api"
 
 const Profile = () => {
   const { lang } = useI18n();
@@ -16,6 +17,66 @@ const Profile = () => {
   const navigate = useNavigate();
   const de = lang === "de";
   const [activeTab, setActiveTab] = useState("profile");
+
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  const [formData, setFormData] = useState({
+  firstName:"",
+  lastName:"",
+  email: "",
+  phone:"",
+  address:"",
+});
+
+useEffect(() => {
+  if (isEditOpen) {
+    setFormData({
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      email: user?.email || "",
+      phone:user?.phone ? String(user.phone) : "",
+      address: user?.address || "",
+    });
+  }
+}, [isEditOpen, user]);
+
+const handleChange = (e) => {
+  const { name, value } = e.target;
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
+};
+
+
+const handleSave = async () => {
+  try {
+    const res = await api.put("api/user/update-user", {
+      ...formData,
+      phone: formData.phone ? Number(formData.phone) : null,
+    });
+
+    const data = res.data;
+
+    if (!data.success) {
+      // Backend might send an error message
+      throw new Error(data.error || "Update failed");
+    }
+
+    toast.success("Profile updated!");
+    setIsEditOpen(false);
+
+  } catch (err) {
+    // Axios error with response
+    if (err.response && err.response.data && err.response.data.error) {
+      toast.error(err.response.data.error);
+    } 
+    // Generic error message
+    else {
+      toast.error(err.message || "Update failed");
+    }
+  }
+};
 
   if (!isLoggedIn || !user) {
     navigate("/login", { replace: true });
@@ -98,7 +159,7 @@ const Profile = () => {
                       <h2 className="font-display text-xl font-bold text-foreground">
                         {de ? "Persönliche Daten" : "Personal Details"}
                       </h2>
-                      <button className="flex items-center gap-2 text-sm text-accent hover:underline">
+                      <button onClick={() => setIsEditOpen(true)} className="flex items-center gap-2 text-sm text-accent hover:underline">
                         <Edit3 className="w-4 h-4" />
                         {de ? "Bearbeiten" : "Edit"}
                       </button>
@@ -107,8 +168,8 @@ const Profile = () => {
                       {[
                         { icon: User, label: de ? "Name" : "Name", value: `${user.firstName} ${user.lastName}` },
                         { icon: Mail, label: "E-Mail", value: user.email },
-                        { icon: Phone, label: de ? "Telefon" : "Phone", value: "—" },
-                        { icon: MapPin, label: de ? "Adresse" : "Address", value: "—" },
+                        { icon: Phone, label: de ? "Telefon" : "Phone", value:user.phone },
+                        { icon: MapPin, label: de ? "Adresse" : "Address", value: user.address },
                       ].map((field) => (
                         <div key={field.label} className="flex items-start gap-3">
                           <field.icon className="w-5 h-5 text-accent mt-0.5 shrink-0" />
@@ -173,6 +234,79 @@ const Profile = () => {
             </div>
           </div>
         </div>
+
+        {isEditOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="bg-card rounded-xl p-6 w-full max-w-md shadow-lg">
+      <h2 className="text-lg font-semibold mb-4">
+        {de ? "Profil bearbeiten" : "Edit Profile"}
+      </h2>
+
+    <div className="space-y-4">
+  <input
+    type="text"
+    name="firstName"
+    value={formData.firstName}
+    onChange={handleChange}
+    placeholder="First Name"
+    className="w-full border rounded-lg px-3 py-2"
+  />
+
+  <input
+    type="text"
+    name="lastName"
+    value={formData.lastName}
+    onChange={handleChange}
+    placeholder="Last Name"
+    className="w-full border rounded-lg px-3 py-2"
+  />
+
+  <input
+    type="email"
+    name="email"
+    value={formData.email}
+    onChange={handleChange}
+    placeholder="Email"
+    className="w-full border rounded-lg px-3 py-2"
+  />
+
+  <input
+    type="tel"   // ✅ fix هنا
+    name="phone"
+    value={formData.phone}
+    onChange={handleChange}
+    placeholder="Phone"
+    className="w-full border rounded-lg px-3 py-2"
+  />
+
+  <input
+    type="text"
+    name="address"
+    value={formData.address}
+    onChange={handleChange}
+    placeholder="Address"
+    className="w-full border rounded-lg px-3 py-2"
+  />
+</div>
+
+      <div className="flex justify-end gap-3 mt-6">
+        <button
+         
+          className="px-4 py-2 text-sm rounded-lg border"
+        >
+          {de ? "Abbrechen" : "Cancel"}
+        </button>
+        <button
+           onClick={handleSave}
+          className="px-4 py-2 text-sm rounded-lg bg-primary text-white"
+        >
+          {de ? "Speichern" : "Save"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
       </main>
       <Footer />
       <CartDrawer />

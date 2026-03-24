@@ -4,7 +4,7 @@ export type Lang = "de" | "en";
 
 const translations = {
   // Navbar
-  "nav.kategorien": { de: "Kategorien", en: "Categories" },
+  "nav.kategorien": { de: "Kategorien", en: "Premium" },
   "nav.bestseller": { de: "Bestseller", en: "Bestsellers" },
   "nav.stoffe": { de: "Stoffe", en: "Fabrics" },
   "nav.angebote": { de: "Angebote", en: "Offers" },

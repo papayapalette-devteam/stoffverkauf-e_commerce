@@ -14,6 +14,7 @@ const Signup = () => {
   const { signup, isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const de = lang === "de";
+
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -23,12 +24,13 @@ const Signup = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Redirect if already logged in
   if (isLoggedIn) {
     navigate("/profile", { replace: true });
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -38,9 +40,8 @@ const Signup = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      const result = signup(firstName, lastName, email, password);
-      setLoading(false);
+    try {
+      const result = await signup(firstName, lastName, email, password, agreed);
 
       if (result.success) {
         toast.success(de ? "Konto erfolgreich erstellt!" : "Account created successfully!");
@@ -51,25 +52,32 @@ const Signup = () => {
           invalid_email: de ? "Bitte geben Sie eine gültige E-Mail-Adresse ein." : "Please enter a valid email address.",
           password_short: de ? "Das Passwort muss mindestens 6 Zeichen lang sein." : "Password must be at least 6 characters.",
           email_exists: de ? "Diese E-Mail-Adresse ist bereits registriert." : "This email is already registered.",
+          terms_not_accepted: de ? "Bitte akzeptieren Sie die AGB." : "Please accept the terms and conditions.",
+          server_error: de ? "Serverfehler" : "Server error",
         };
         setError(messages[result.error || ""] || (de ? "Ein Fehler ist aufgetreten." : "An error occurred."));
       }
-    }, 600);
+    } catch (err) {
+      setError(de ? "Serverfehler" : "Server error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SEO title={de ? "Registrieren" : "Create Account"} description={de ? "Erstellen Sie Ihr Konto bei Stoffverkauf Weber." : "Create your Stoffverkauf Weber account."} path="/signup" noIndex />
+      <SEO
+        title={de ? "Registrieren" : "Create Account"}
+        description={de ? "Erstellen Sie Ihr Konto bei Stoffverkauf Weber." : "Create your Stoffverkauf Weber account."}
+        path="/signup"
+        noIndex
+      />
       <Navbar />
       <main className="flex-1 flex items-center justify-center py-16 px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="font-display text-3xl font-bold text-foreground">
-              {de ? "Konto erstellen" : "Create Account"}
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              {de ? "Registrieren Sie sich für exklusive Vorteile" : "Sign up for exclusive benefits"}
-            </p>
+            <h1 className="font-display text-3xl font-bold text-foreground">{de ? "Konto erstellen" : "Create Account"}</h1>
+            <p className="text-muted-foreground mt-2">{de ? "Registrieren Sie sich für exklusive Vorteile" : "Sign up for exclusive benefits"}</p>
           </div>
 
           {error && (
@@ -98,6 +106,7 @@ const Signup = () => {
                 className="w-full px-4 py-3 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-accent font-body"
               />
             </div>
+
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
@@ -109,6 +118,7 @@ const Signup = () => {
                 className="w-full pl-11 pr-4 py-3 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-accent font-body"
               />
             </div>
+
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
@@ -125,31 +135,7 @@ const Signup = () => {
               </button>
             </div>
 
-            {/* Password strength indicator */}
-            <div className="space-y-1">
-              <div className="flex gap-1">
-                {[1, 2, 3, 4].map((level) => (
-                  <div
-                    key={level}
-                    className={`h-1 flex-1 rounded-full transition-colors ${
-                      password.length >= level * 3
-                        ? level <= 1 ? "bg-destructive" : level <= 2 ? "bg-amber-500" : "bg-green-500"
-                        : "bg-border"
-                    }`}
-                  />
-                ))}
-              </div>
-              {password.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {password.length < 6
-                    ? (de ? "Zu kurz" : "Too short")
-                    : password.length < 9
-                    ? (de ? "Ausreichend" : "Fair")
-                    : (de ? "Stark" : "Strong")}
-                </p>
-              )}
-            </div>
-
+            {/* Terms */}
             <label className="flex items-start gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
@@ -158,9 +144,15 @@ const Signup = () => {
                 className="rounded border-border mt-1"
               />
               <span>
-                {de
-                  ? <>Ich akzeptiere die <Link to="/agb" className="text-accent hover:underline">AGB</Link> und <Link to="/datenschutz" className="text-accent hover:underline">Datenschutzerklärung</Link></>
-                  : <>I agree to the <Link to="/agb" className="text-accent hover:underline">Terms</Link> and <Link to="/datenschutz" className="text-accent hover:underline">Privacy Policy</Link></>}
+                {de ? (
+                  <>
+                    Ich akzeptiere die <Link to="/agb" className="text-accent hover:underline">AGB</Link> und <Link to="/datenschutz" className="text-accent hover:underline">Datenschutzerklärung</Link>
+                  </>
+                ) : (
+                  <>
+                    I agree to the <Link to="/agb" className="text-accent hover:underline">Terms</Link> and <Link to="/datenschutz" className="text-accent hover:underline">Privacy Policy</Link>
+                  </>
+                )}
               </span>
             </label>
 
@@ -171,17 +163,13 @@ const Signup = () => {
               disabled={loading}
               className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
-              {loading
-                ? (de ? "Wird erstellt..." : "Creating account...")
-                : (de ? "Registrieren" : "Create Account")}
+              {loading ? (de ? "Wird erstellt..." : "Creating account...") : (de ? "Registrieren" : "Create Account")}
             </motion.button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {de ? "Bereits ein Konto?" : "Already have an account?"}{" "}
-            <Link to="/login" className="text-accent font-semibold hover:underline">
-              {de ? "Anmelden" : "Sign In"}
-            </Link>
+            <Link to="/login" className="text-accent font-semibold hover:underline">{de ? "Anmelden" : "Sign In"}</Link>
           </p>
         </motion.div>
       </main>

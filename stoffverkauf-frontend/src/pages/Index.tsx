@@ -1,7 +1,6 @@
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import FeaturesBar from "@/components/FeaturesBar";
-import CategoryShowcase from "@/components/CategoryShowcase";
 import BestsellerCarousel from "@/components/BestsellerCarousel";
 import ProductGrid from "@/components/ProductGrid";
 import WhyChooseUs from "@/components/WhyChooseUs";
@@ -11,6 +10,7 @@ import NewsletterSection from "@/components/NewsletterSection";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import SEO from "@/components/SEO";
+import PremiumSellerCarousel from "@/components/PremiumSeller";
 
 const Index = () => {
   const jsonLd = {
@@ -43,7 +43,7 @@ const Index = () => {
         <HeroSection />
         <FeaturesBar />
         <section id="kategorien">
-          <CategoryShowcase />
+          <PremiumSellerCarousel />
         </section>
         <section id="bestseller">
           <BestsellerCarousel />

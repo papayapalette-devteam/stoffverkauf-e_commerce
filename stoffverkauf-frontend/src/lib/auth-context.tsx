@@ -1,98 +1,110 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import api from "../../api"; // Axios instance pointing to backend
 
 export interface AuthUser {
   firstName: string;
   lastName: string;
   email: string;
+  phone: number;
+  address: string;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
+  token: string | null;
   isLoggedIn: boolean;
-  login: (email: string, password: string) => { success: boolean; error?: string };
-  signup: (firstName: string, lastName: string, email: string, password: string) => { success: boolean; error?: string };
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (firstName: string, lastName: string, email: string, password: string, agreed: boolean) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (data: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = "weber_auth_user";
-const USERS_KEY = "weber_registered_users";
-
-interface StoredUser {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-}
+const STORAGE_KEY = "weber_auth";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(() => {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+
+  // Load user + token from localStorage
+  useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+      if (stored) {
+        const data = JSON.parse(stored);
+        setUser(data.user);
+        setToken(data.token);
+        // Set default axios header
+        api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+      }
+    } catch {}
+  }, []);
 
+  // Save user + token to localStorage
   useEffect(() => {
-    if (user) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    if (user && token) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ user, token }));
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     } else {
       localStorage.removeItem(STORAGE_KEY);
+      delete api.defaults.headers.common["Authorization"];
     }
-  }, [user]);
+  }, [user, token]);
 
-  const getUsers = (): StoredUser[] => {
+  const signup = async (
+    firstName: string,
+    lastName: string,
+    email: string,
+    password: string,
+    agreed: boolean
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const stored = localStorage.getItem(USERS_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
+      const res = await api.post("/api/user/register-user", { firstName, lastName, email, password, agreed });
+
+      if (res.data.success) {
+        const { user: userData, token: jwtToken } = res.data;
+        setUser(userData);
+        setToken(jwtToken);
+        return { success: true };
+      } else {
+        return { success: false, error: res.data.error || res.data.errors?.[0] };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.response?.data?.error || "server_error" };
     }
   };
 
-  const saveUsers = (users: StoredUser[]) => {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await api.post("/api/user/login", { email, password });
+
+      if (res.data.success) {
+        const { user: userData, token: jwtToken } = res.data;
+        setUser(userData);
+        setToken(jwtToken);
+        return { success: true };
+      } else {
+        return { success: false, error: res.data.error || "invalid_credentials" };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.response?.data?.error || "server_error" };
+    }
   };
 
-  const signup = (firstName: string, lastName: string, email: string, password: string) => {
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!firstName.trim() || !lastName.trim()) return { success: false, error: "name_required" };
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return { success: false, error: "invalid_email" };
-    if (password.length < 6) return { success: false, error: "password_short" };
 
-    const users = getUsers();
-    if (users.find((u) => u.email === trimmedEmail)) return { success: false, error: "email_exists" };
 
-    const newUser: StoredUser = { firstName: firstName.trim(), lastName: lastName.trim(), email: trimmedEmail, password };
-    saveUsers([...users, newUser]);
-    setUser({ firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email });
-    return { success: true };
+  const logout = () => {
+    setUser(null);
+    setToken(null);
   };
-
-  const login = (email: string, password: string) => {
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) return { success: false, error: "invalid_email" };
-
-    const users = getUsers();
-    const found = users.find((u) => u.email === trimmedEmail && u.password === password);
-    if (!found) return { success: false, error: "invalid_credentials" };
-
-    setUser({ firstName: found.firstName, lastName: found.lastName, email: found.email });
-    return { success: true };
-  };
-
-  const logout = () => setUser(null);
 
   const updateProfile = (data: Partial<AuthUser>) => {
     if (user) setUser({ ...user, ...data });
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, signup, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, token, isLoggedIn: !!user, login, signup, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

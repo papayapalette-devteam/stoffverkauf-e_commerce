@@ -2,16 +2,36 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { toast } from "sonner";
+import api from "../../api"
 
 const NewsletterSection = () => {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const { t } = useI18n();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email) setSubmitted(true);
-  };
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!email) return;
+
+  try {
+    const res = await api.post("api/subscribe/add-subscribers", { email }); // ✅ use api.post
+
+    const data = res.data;
+
+    if (!data.success) {
+      toast.error(data.error || "Subscription failed");
+      return;
+    }
+
+    setSubmitted(true);
+    toast.success("Subscribed successfully!");
+  } catch (err: any) {
+    // Axios errors usually have response data
+    const message = err?.response?.data?.error || "Subscription failed. Try again later.";
+    toast.error(message);
+  }
+};
 
   return (
     <section className="bg-primary text-primary-foreground py-16 lg:py-24">

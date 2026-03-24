@@ -52,8 +52,13 @@ app.use('/api/products',require('./Routes/add_product'));
 
 app.use('/api/category',require('./Routes/category'));
 
+app.use('/api/user',require('./Routes/user'));
 
+app.use('/api/wishlist',require('./Routes/wishlist'));
 
+app.use('/api/subscribe',require('./Routes/subscribers'));
+
+app.use('/api/blog',require('./Routes/blog'));
 
 
 // ===============================================

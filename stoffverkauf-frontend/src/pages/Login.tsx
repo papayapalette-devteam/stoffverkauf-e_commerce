@@ -31,8 +31,9 @@ const Login = () => {
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      const result = login(email, password);
+    setTimeout(async() => {
+      const result = await login(email, password);
+
       setLoading(false);
 
       if (result.success) {
