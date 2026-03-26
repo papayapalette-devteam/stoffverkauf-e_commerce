@@ -1,32 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
-import { CreditCard, BarChart3, Facebook, Code, Copy, Check, ExternalLink, ShoppingCart, Truck, Euro, Shield, Package, Unplug } from "lucide-react";
+import { CreditCard, BarChart3, Facebook, Code, Copy, Check, ExternalLink, ShoppingCart, Truck, Euro, Shield, Package, Unplug, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import api from "../../../api";
 
-const STORAGE_KEY = "admin_integrations";
-
-const loadSaved = (): Record<string, string> => {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  } catch {
-    return {};
-  }
-};
-
-const saveFields = (keys: Record<string, string>) => {
-  const data = loadSaved();
-  Object.entries(keys).forEach(([k, v]) => {
-    if (v) data[k] = v;
-    else delete data[k];
-  });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-};
-
-const clearFieldKeys = (...keys: string[]) => {
-  const data = loadSaved();
-  keys.forEach((k) => delete data[k]);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-};
+// Integration logic moved to backend, removing localStorage helpers
 
 interface Integration {
   id: string;
@@ -43,31 +21,82 @@ const AdminIntegrations = () => {
   const { lang } = useI18n();
   const de = lang === "de";
 
-  const saved = loadSaved();
-
-  const [ga4Id, setGa4Id] = useState(saved.ga4Id || "");
-  const [fbPixelId, setFbPixelId] = useState(saved.fbPixelId || "");
-  const [shopifyDomain, setShopifyDomain] = useState(saved.shopifyDomain || "");
-  const [shopifyToken, setShopifyToken] = useState(saved.shopifyToken || "");
+  const [ga4Id, setGa4Id] = useState("");
+  const [fbPixelId, setFbPixelId] = useState("");
+  const [shopifyDomain, setShopifyDomain] = useState("");
+  const [shopifyToken, setShopifyToken] = useState("");
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
 
-  const [stripeKey, setStripeKey] = useState(saved.stripeKey || "");
-  const [stripeSecret, setStripeSecret] = useState(saved.stripeSecret || "");
-  const [stripeMode, setStripeMode] = useState<"test" | "live">((saved.stripeMode as "test" | "live") || "test");
-  const [paypalClientId, setPaypalClientId] = useState(saved.paypalClientId || "");
-  const [paypalSecret, setPaypalSecret] = useState(saved.paypalSecret || "");
-  const [paypalMode, setPaypalMode] = useState<"sandbox" | "live">((saved.paypalMode as "sandbox" | "live") || "sandbox");
-  const [klarnaUser, setKlarnaUser] = useState(saved.klarnaUser || "");
-  const [klarnaPass, setKlarnaPass] = useState(saved.klarnaPass || "");
-  const [klarnaMode, setKlarnaMode] = useState<"playground" | "production">((saved.klarnaMode as "playground" | "production") || "playground");
+  const [stripeKey, setStripeKey] = useState("");
+  const [stripeSecret, setStripeSecret] = useState("");
+  const [stripeMode, setStripeMode] = useState<"test" | "live">("test");
+  const [paypalUsername, setPaypalUsername] = useState("");
+  const [paypalPassword, setPaypalPassword] = useState("");
+  const [paypalSignature, setPaypalSignature] = useState("");
+  const [paypalMode, setPaypalMode] = useState<"sandbox" | "live">("sandbox");
+  const [klarnaUser, setKlarnaUser] = useState("");
+  const [klarnaPass, setKlarnaPass] = useState("");
+  const [klarnaMode, setKlarnaMode] = useState<"playground" | "production">("playground");
 
-  const [dhlApiKey, setDhlApiKey] = useState(saved.dhlApiKey || "");
-  const [dhlSecret, setDhlSecret] = useState(saved.dhlSecret || "");
-  const [dhlAccountNumber, setDhlAccountNumber] = useState(saved.dhlAccountNumber || "");
-  const [dpdToken, setDpdToken] = useState(saved.dpdToken || "");
-  const [dpdDepotNumber, setDpdDepotNumber] = useState(saved.dpdDepotNumber || "");
-  const [hermesApiKey, setHermesApiKey] = useState(saved.hermesApiKey || "");
-  const [hermesPartnerId, setHermesPartnerId] = useState(saved.hermesPartnerId || "");
+  const [dhlApiKey, setDhlApiKey] = useState("");
+  const [dhlSecret, setDhlSecret] = useState("");
+  const [dhlAccountNumber, setDhlAccountNumber] = useState("");
+  const [dpdToken, setDpdToken] = useState("");
+  const [dpdDepotNumber, setDpdDepotNumber] = useState("");
+  const [hermesApiKey, setHermesApiKey] = useState("");
+  const [hermesPartnerId, setHermesPartnerId] = useState("");
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load all integrations from backend
+  useEffect(() => {
+    const fetchIntegrations = async () => {
+      try {
+        const res = await api.get('/api/integration');
+        if (res.data.success) {
+          const integrations = res.data.integrations;
+          integrations.forEach((integ: any) => {
+            switch(integ.key) {
+              case 'ga4': setGa4Id(integ.data.ga4Id); break;
+              case 'fbpixel': setFbPixelId(integ.data.fbPixelId); break;
+              case 'shopify': setShopifyDomain(integ.data.shopifyDomain); setShopifyToken(integ.data.shopifyToken); break;
+              case 'stripe': setStripeKey(integ.data.stripeKey); setStripeSecret(integ.data.stripeSecret); setStripeMode(integ.data.stripeMode); break;
+              case 'paypal': setPaypalUsername(integ.data.paypalUsername); setPaypalPassword(integ.data.paypalPassword); setPaypalSignature(integ.data.paypalSignature); setPaypalMode(integ.data.paypalMode); break;
+              case 'klarna': setKlarnaUser(integ.data.klarnaUser); setKlarnaPass(integ.data.klarnaPass); setKlarnaMode(integ.data.klarnaMode); break;
+              case 'dhl': setDhlApiKey(integ.data.dhlApiKey); setDhlSecret(integ.data.dhlSecret); setDhlAccountNumber(integ.data.dhlAccountNumber); break;
+              case 'dpd': setDpdToken(integ.data.dpdToken); setDpdDepotNumber(integ.data.dpdDepotNumber); break;
+              case 'hermes': setHermesApiKey(integ.data.hermesApiKey); setHermesPartnerId(integ.data.hermesPartnerId); break;
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Fetch integrations error:", err);
+        toast.error("Failed to load integrations");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchIntegrations();
+  }, []);
+
+  const saveIntegration = async (key: string, name: string, data: any) => {
+    try {
+      await api.post('/api/integration/save', { key, name, data, isActive: true });
+      toast.success(de ? `${name} Integration gespeichert` : `${name} integration saved`);
+    } catch (err) {
+      toast.error(de ? `Fehler beim Speichern von ${name}` : `Failed to save ${name}`);
+    }
+  };
+
+  const disconnectIntegration = async (key: string, name: string, resetFns: Array<(v: any) => void>) => {
+    try {
+      await api.delete(`/api/integration/${key}`);
+      resetFns.forEach(fn => fn(""));
+      toast.success(de ? `${name} Verbindung getrennt` : `${name} disconnected`);
+    } catch (err) {
+      toast.error(de ? `Fehler beim Trennen von ${name}` : `Failed to disconnect ${name}`);
+    }
+  };
 
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -78,11 +107,7 @@ const AdminIntegrations = () => {
     toast.success(de ? "Code kopiert" : "Code copied");
   };
 
-  const disconnect = (keys: string[], resetFns: Array<(v: string) => void>) => {
-    clearFieldKeys(...keys);
-    resetFns.forEach((fn) => fn(""));
-    toast.success(de ? "Verbindung getrennt & API-Schlüssel entfernt" : "Disconnected & API keys removed");
-  };
+// Disconnect logic updated above
 
   const ga4Snippet = `<!-- Google Analytics 4 -->\n<script async src="https://www.googletagmanager.com/gtag/js?id=${ga4Id || "G-XXXXXXXXXX"}"></script>\n<script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag('js', new Date());\n  gtag('config', '${ga4Id || "G-XXXXXXXXXX"}');\n</script>`;
 
@@ -98,8 +123,8 @@ const AdminIntegrations = () => {
       icon: CreditCard,
       desc: de ? "Kreditkarten, SEPA-Lastschrift, Apple Pay, Google Pay" : "Credit cards, SEPA direct debit, Apple Pay, Google Pay",
       status: stripeKey ? "connected" : "disconnected",
-      onSave: () => { saveFields({ stripeKey, stripeSecret, stripeMode }); toast.success(de ? "Stripe API-Schlüssel gespeichert" : "Stripe API keys saved"); },
-      onDisconnect: () => disconnect(["stripeKey", "stripeSecret", "stripeMode"], [setStripeKey, setStripeSecret]),
+      onSave: () => saveIntegration("stripe", "Stripe", { stripeKey, stripeSecret, stripeMode }),
+      onDisconnect: () => disconnectIntegration("stripe", "Stripe", [setStripeKey, setStripeSecret]),
       fields: (
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-2">
@@ -130,12 +155,12 @@ const AdminIntegrations = () => {
     },
     {
       id: "paypal",
-      name: "PayPal",
+      name: "PayPal (Classic API)",
       icon: Euro,
-      desc: de ? "PayPal-Zahlungen, Ratenzahlung, PayPal Express Checkout" : "PayPal payments, installments, Express Checkout",
-      status: paypalClientId ? "connected" : "disconnected",
-      onSave: () => { saveFields({ paypalClientId, paypalSecret, paypalMode }); toast.success(de ? "PayPal API-Schlüssel gespeichert" : "PayPal API keys saved"); },
-      onDisconnect: () => disconnect(["paypalClientId", "paypalSecret", "paypalMode"], [setPaypalClientId, setPaypalSecret]),
+      desc: de ? "PayPal-Zahlungen via Classic API (NVP/SOAP)" : "PayPal payments via Classic API (NVP/SOAP)",
+      status: paypalUsername ? "connected" : "disconnected",
+      onSave: () => saveIntegration("paypal", "PayPal", { paypalUsername, paypalPassword, paypalSignature, paypalMode }),
+      onDisconnect: () => disconnectIntegration("paypal", "PayPal", [setPaypalUsername, setPaypalPassword, setPaypalSignature]),
       fields: (
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-2">
@@ -144,20 +169,19 @@ const AdminIntegrations = () => {
               <option value="sandbox">Sandbox</option>
               <option value="live">Live</option>
             </select>
-            {paypalMode === "sandbox" && <span className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-medium">Sandbox</span>}
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1">Client ID</label>
-            <input value={paypalClientId} onChange={(e) => setPaypalClientId(e.target.value)} placeholder="AxxxxxxxxxxxB" className={inputClass} />
+            <label className="text-sm font-medium text-foreground block mb-1">API Username</label>
+            <input value={paypalUsername} onChange={(e) => setPaypalUsername(e.target.value)} placeholder="name_api1.example.com" className={inputClass} />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1">Client Secret</label>
-            <input value={paypalSecret} onChange={(e) => setPaypalSecret(e.target.value)} type="password" placeholder="ExxxxxxxxxxxD" className={inputClass} />
+            <label className="text-sm font-medium text-foreground block mb-1">API Password</label>
+            <input value={paypalPassword} onChange={(e) => setPaypalPassword(e.target.value)} type="password" placeholder="M6BG6FZR9CMHREV4" className={inputClass} />
           </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" />
-            <a href="https://developer.paypal.com/dashboard/" target="_blank" rel="noopener" className="underline">{de ? "PayPal Developer Dashboard öffnen" : "Open PayPal Developer Dashboard"}</a>
-          </p>
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">Signature</label>
+            <input value={paypalSignature} onChange={(e) => setPaypalSignature(e.target.value)} type="password" placeholder="AiPC9Bjk..." className={inputClass} />
+          </div>
         </div>
       ),
     },
@@ -167,8 +191,8 @@ const AdminIntegrations = () => {
       icon: Shield,
       desc: de ? "Sofortüberweisung, Rechnung, Ratenkauf" : "Instant transfer, invoice, installments",
       status: klarnaUser ? "connected" : "disconnected",
-      onSave: () => { saveFields({ klarnaUser, klarnaPass, klarnaMode }); toast.success(de ? "Klarna API-Schlüssel gespeichert" : "Klarna API keys saved"); },
-      onDisconnect: () => disconnect(["klarnaUser", "klarnaPass", "klarnaMode"], [setKlarnaUser, setKlarnaPass]),
+      onSave: () => saveIntegration("klarna", "Klarna", { klarnaUser, klarnaPass, klarnaMode }),
+      onDisconnect: () => disconnectIntegration("klarna", "Klarna", [setKlarnaUser, setKlarnaPass]),
       fields: (
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-2">
@@ -203,8 +227,8 @@ const AdminIntegrations = () => {
       icon: Truck,
       desc: de ? "Versandetiketten & Sendungsverfolgung" : "Shipping labels & tracking",
       status: dhlApiKey ? "connected" : "disconnected",
-      onSave: () => { saveFields({ dhlApiKey, dhlSecret, dhlAccountNumber }); toast.success(de ? "DHL API-Schlüssel gespeichert" : "DHL API keys saved"); },
-      onDisconnect: () => disconnect(["dhlApiKey", "dhlSecret", "dhlAccountNumber"], [setDhlApiKey, setDhlSecret, setDhlAccountNumber]),
+      onSave: () => saveIntegration("dhl", "DHL", { dhlApiKey, dhlSecret, dhlAccountNumber }),
+      onDisconnect: () => disconnectIntegration("dhl", "DHL", [setDhlApiKey, setDhlSecret, setDhlAccountNumber]),
       fields: (
         <div className="space-y-4">
           <div>
@@ -232,8 +256,8 @@ const AdminIntegrations = () => {
       icon: Package,
       desc: de ? "Paketversand mit Predict-Service" : "Parcel shipping with Predict service",
       status: dpdToken ? "connected" : "disconnected",
-      onSave: () => { saveFields({ dpdToken, dpdDepotNumber }); toast.success(de ? "DPD API-Schlüssel gespeichert" : "DPD API keys saved"); },
-      onDisconnect: () => disconnect(["dpdToken", "dpdDepotNumber"], [setDpdToken, setDpdDepotNumber]),
+      onSave: () => saveIntegration("dpd", "DPD", { dpdToken, dpdDepotNumber }),
+      onDisconnect: () => disconnectIntegration("dpd", "DPD", [setDpdToken]),
       fields: (
         <div className="space-y-4">
           <div>
@@ -257,8 +281,8 @@ const AdminIntegrations = () => {
       icon: Truck,
       desc: de ? "Hermes Versand mit Paketshop-Netzwerk" : "Hermes shipping with parcel shop network",
       status: hermesApiKey ? "connected" : "disconnected",
-      onSave: () => { saveFields({ hermesApiKey, hermesPartnerId }); toast.success(de ? "Hermes API-Schlüssel gespeichert" : "Hermes API keys saved"); },
-      onDisconnect: () => disconnect(["hermesApiKey", "hermesPartnerId"], [setHermesApiKey, setHermesPartnerId]),
+      onSave: () => saveIntegration("hermes", "Hermes", { hermesApiKey, hermesPartnerId }),
+      onDisconnect: () => disconnectIntegration("hermes", "Hermes", [setHermesApiKey]),
       fields: (
         <div className="space-y-4">
           <div>
@@ -285,8 +309,8 @@ const AdminIntegrations = () => {
       icon: ShoppingCart,
       desc: de ? "E-Commerce & Zahlungsabwicklung über Shopify" : "E-commerce & payment processing via Shopify",
       status: shopifyDomain ? "connected" : "disconnected",
-      onSave: () => { saveFields({ shopifyDomain, shopifyToken }); toast.success(de ? "Shopify API-Schlüssel gespeichert" : "Shopify API keys saved"); },
-      onDisconnect: () => disconnect(["shopifyDomain", "shopifyToken"], [setShopifyDomain, setShopifyToken]),
+      onSave: () => saveIntegration("shopify", "Shopify", { shopifyDomain, shopifyToken }),
+      onDisconnect: () => disconnectIntegration("shopify", "Shopify", [setShopifyDomain, setShopifyToken]),
       fields: (
         <div className="space-y-4">
           <div>
@@ -307,8 +331,8 @@ const AdminIntegrations = () => {
       icon: BarChart3,
       desc: de ? "Website-Analyse und Besuchertracking" : "Website analytics and visitor tracking",
       status: ga4Id ? "connected" : "disconnected",
-      onSave: () => { saveFields({ ga4Id }); toast.success(de ? "GA4 Measurement ID gespeichert" : "GA4 Measurement ID saved"); },
-      onDisconnect: () => disconnect(["ga4Id"], [setGa4Id]),
+      onSave: () => saveIntegration("ga4", "Google Analytics 4", { ga4Id }),
+      onDisconnect: () => disconnectIntegration("ga4", "Google Analytics 4", [setGa4Id]),
       fields: (
         <div className="space-y-4">
           <div>
@@ -335,8 +359,8 @@ const AdminIntegrations = () => {
       icon: Facebook,
       desc: de ? "Facebook/Meta Werbe-Tracking und Conversion-Optimierung" : "Facebook/Meta ad tracking and conversion optimization",
       status: fbPixelId ? "connected" : "disconnected",
-      onSave: () => { saveFields({ fbPixelId }); toast.success(de ? "Facebook Pixel ID gespeichert" : "Facebook Pixel ID saved"); },
-      onDisconnect: () => disconnect(["fbPixelId"], [setFbPixelId]),
+      onSave: () => saveIntegration("fbpixel", "Facebook Pixel", { fbPixelId }),
+      onDisconnect: () => disconnectIntegration("fbpixel", "Facebook Pixel", [setFbPixelId]),
       fields: (
         <div className="space-y-4">
           <div>
@@ -409,6 +433,14 @@ const AdminIntegrations = () => {
       ))}
     </div>
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-20">
+        <Loader2 className="w-8 h-8 text-accent animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

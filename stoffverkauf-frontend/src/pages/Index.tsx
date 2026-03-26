@@ -11,8 +11,16 @@ import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import SEO from "@/components/SEO";
 import PremiumSellerCarousel from "@/components/PremiumSeller";
+import { useHomeSections } from "@/lib/home-sections";
 
 const Index = () => {
+  const { sections, isLoading } = useHomeSections();
+
+  const isEnabled = (id: string) => {
+    const section = sections.find((s) => s.id === id);
+    return section ? section.enabled : true; // default to true if not found yet
+  };
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Store",
@@ -30,33 +38,45 @@ const Index = () => {
     },
   };
 
+  if (isLoading) {
+      return null; // Or a loader
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <SEO
         title="Stoffverkauf Weber | Italienische Modestoffe"
-        description="Hochwertige italienische Modestoffe als Meterware. Schurwolle, Jersey, Viskose und mehr — für Ihre individuelle Garderobe."
+        description="Hochwertige italienische Modestoffe als Meterware. Schurwolle, Jersey, Viskose and mehr — für Ihre individuelle Garderobe."
         path="/"
         jsonLd={jsonLd}
       />
       <Navbar />
       <main className="flex-1">
-        <HeroSection />
-        <FeaturesBar />
-        <section id="kategorien">
-          <PremiumSellerCarousel />
-        </section>
-        <section id="bestseller">
-          <BestsellerCarousel />
-        </section>
-        <section id="stoffe">
-          <ProductGrid />
-        </section>
-        <section id="angebote">
-          <OfferBanner />
-        </section>
-        <WhyChooseUs />
-        <Testimonials />
-        <NewsletterSection />
+        {isEnabled("hero") && <HeroSection />}
+        {isEnabled("features") && <FeaturesBar />}
+        {isEnabled("categories") && (
+            <section id="kategorien">
+              <PremiumSellerCarousel />
+            </section>
+        )}
+        {isEnabled("bestseller") && (
+            <section id="bestseller">
+              <BestsellerCarousel />
+            </section>
+        )}
+        {isEnabled("products") && (
+            <section id="stoffe">
+              <ProductGrid />
+            </section>
+        )}
+        {isEnabled("offer") && (
+            <section id="angebote">
+              <OfferBanner />
+            </section>
+        )}
+        {isEnabled("why") && <WhyChooseUs />}
+        {isEnabled("testimonials") && <Testimonials />}
+        {isEnabled("newsletter") && <NewsletterSection />}
       </main>
       <Footer />
       <CartDrawer />

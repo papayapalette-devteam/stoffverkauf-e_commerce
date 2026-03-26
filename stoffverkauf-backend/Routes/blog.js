@@ -1,6 +1,6 @@
 const express=require('express')
+const { createBlog, getBlogs, deleteBlog, updateBlog, getBlogById } = require("../Controllers/Blog/blog");
 
-const { createBlog, getBlogs, deleteBlog, updateBlog } = require("../Controllers/Blog/blog");
 
 
 const router = express.Router();
@@ -14,10 +14,12 @@ const router = express.Router();
 router.post("/add-blog", createBlog);
 
 router.get("/get-blogs", getBlogs);
+router.get("/get-blog/:id", getBlogById);
 
 router.put("/update-blog/:id", updateBlog);
 
 router.delete("/delete-blog/:id", deleteBlog);
+
 
 
 

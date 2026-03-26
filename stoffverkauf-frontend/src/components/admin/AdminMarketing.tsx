@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Plus, Trash2, Tag, Image as ImageIcon, Mail, ShoppingCart, Bell, Percent, Calendar, Users } from "lucide-react";
+import { Plus, Trash2, Tag, Image as ImageIcon, Mail, ShoppingCart, Bell, Percent, Calendar, Users, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
+import api from "../../../api";
+import axios from "axios";
 
 interface Coupon {
-  id: string;
+  _id: string;
   code: string;
   type: "percent" | "fixed";
   value: number;
@@ -24,32 +26,10 @@ interface Banner {
   color: string;
 }
 
-interface Subscriber {
-  id: string;
-  email: string;
-  date: string;
-  status: "active" | "unsubscribed";
-}
-
-const mockCoupons: Coupon[] = [
-  { id: "1", code: "WEBER10", type: "percent", value: 10, minOrder: 50, uses: 34, maxUses: 100, expires: "2026-03-31", active: true },
-  { id: "2", code: "SOMMER20", type: "percent", value: 20, minOrder: 100, uses: 12, maxUses: 50, expires: "2026-06-30", active: true },
-  { id: "3", code: "NEU5EUR", type: "fixed", value: 5, minOrder: 30, uses: 8, maxUses: 200, expires: "2026-12-31", active: false },
-];
-
 const mockBanners: Banner[] = [
   { id: "1", title: "Frühjahrskollektion 2026", subtitle: "Neue Stoffe eingetroffen!", cta: "Jetzt entdecken", active: true, color: "#3E005E" },
   { id: "2", title: "Kostenloser Versand", subtitle: "Ab 100€ Bestellwert", cta: "Zum Shop", active: true, color: "#5600B2" },
   { id: "3", title: "SALE — bis zu 30% Rabatt", subtitle: "Nur für kurze Zeit", cta: "Zum Angebot", active: false, color: "#924ED1" },
-];
-
-const mockSubscribers: Subscriber[] = [
-  { id: "1", email: "maria.schmidt@email.de", date: "2026-02-01", status: "active" },
-  { id: "2", email: "t.keller@email.de", date: "2026-01-15", status: "active" },
-  { id: "3", email: "anna.braun@email.de", date: "2026-01-20", status: "active" },
-  { id: "4", email: "petra.w@email.de", date: "2025-12-10", status: "active" },
-  { id: "5", email: "s.hoffmann@email.de", date: "2025-11-05", status: "unsubscribed" },
-  { id: "6", email: "k.mueller@email.de", date: "2025-10-20", status: "unsubscribed" },
 ];
 
 const mockAbandoned = [
@@ -63,10 +43,21 @@ const AdminMarketing = () => {
   const { lang } = useI18n();
   const de = lang === "de";
   const [activeTab, setActiveTab] = useState<"coupons" | "banners" | "newsletter" | "abandoned">("coupons");
-  const [coupons, setCoupons] = useState(mockCoupons);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCoupons, setTotalCoupons] = useState(0);
+  const [totalActiveCoupons, setTotalActiveCoupons] = useState(0);
+  const MAX_VISIBLE = 5;
+
   const [banners, setBanners] = useState(mockBanners);
   const [showCouponForm, setShowCouponForm] = useState(false);
-  const [newCoupon, setNewCoupon] = useState<{ code: string; type: "percent" | "fixed"; value: number; minOrder: number; maxUses: number; expires: string }>({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
+  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  const [newCoupon, setNewCoupon] = useState<{ _id?: string; code: string; type: "percent" | "fixed"; value: number; minOrder: number; maxUses: number; expires: string }>({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
 
@@ -77,21 +68,115 @@ const AdminMarketing = () => {
     { id: "abandoned" as const, label: de ? "Abgebrochene Warenkörbe" : "Abandoned Carts", icon: ShoppingCart },
   ];
 
-  const handleCreateCoupon = () => {
+  const getVisiblePages = () => {
+    const pages = [];
+    let start = Math.max(1, page - Math.floor(MAX_VISIBLE / 2));
+    let end = start + MAX_VISIBLE - 1;
+
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(1, end - MAX_VISIBLE + 1);
+    }
+
+    if (start > 1) {
+      pages.push(1);
+      if (start > 2) pages.push("...");
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    if (end < totalPages) {
+      if (end < totalPages - 1) pages.push("...");
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
+
+  // Fetch Coupons
+  const fetchCoupons = async () => {
+    try {
+      setLoading(true);
+      const resp = await api.get("/api/coupon/get-coupons", {
+        params: { page, limit }
+      });
+      // The backend now returns { data, pagination: { total, page, pages } }
+      setCoupons(resp.data.data);
+      if (resp.data.pagination) {
+        setTotalPages(resp.data.pagination.pages);
+        setTotalCoupons(resp.data.pagination.total);
+        setTotalActiveCoupons(resp.data.pagination.totalActive);
+      }
+    } catch (err) {
+      console.error("Failed to fetch coupons:", err);
+      toast.error(de ? "Fehler beim Laden der Gutscheine" : "Failed to load coupons");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "coupons") {
+      fetchCoupons();
+    }
+  }, [activeTab, page, limit]);
+
+  const handleCreateCoupon = async () => {
     if (!newCoupon.code) return;
-    setCoupons([...coupons, { id: Date.now().toString(), ...newCoupon, uses: 0, active: true }]);
-    toast.success(de ? `Gutschein "${newCoupon.code}" erstellt` : `Coupon "${newCoupon.code}" created`);
-    setShowCouponForm(false);
-    setNewCoupon({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
+    try {
+      const resp = await api.post("/api/coupon/save-coupon", newCoupon);
+      if (resp.data.success) {
+        toast.success(resp.data.message);
+        setShowCouponForm(false);
+        setEditingCoupon(null);
+        setNewCoupon({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
+        fetchCoupons();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.response?.data?.errors?.[0] || "Error saving coupon");
+    }
   };
 
-  const toggleCoupon = (id: string) => {
-    setCoupons(coupons.map(c => c.id === id ? { ...c, active: !c.active } : c));
+  const openEdit = (coupon: Coupon) => {
+    setEditingCoupon(coupon);
+    setNewCoupon({
+      _id: coupon._id,
+      code: coupon.code,
+      type: coupon.type,
+      value: coupon.value,
+      minOrder: coupon.minOrder,
+      maxUses: coupon.maxUses,
+      expires: coupon.expires || "",
+    });
+    setShowCouponForm(true);
   };
 
-  const deleteCoupon = (id: string, code: string) => {
-    setCoupons(coupons.filter(c => c.id !== id));
-    toast.success(de ? `Gutschein "${code}" gelöscht` : `Coupon "${code}" deleted`);
+  const toggleCoupon = async (id: string) => {
+    try {
+      const resp = await api.patch(`/api/coupon/toggle-coupon/${id}`);
+      if (resp.data.success) {
+        setCoupons(coupons.map(c => c._id === id ? { ...c, active: resp.data.active } : c));
+        toast.success(de ? "Status aktualisiert" : "Status updated");
+      }
+    } catch (err) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  const deleteCoupon = async (id: string, code: string) => {
+    try {
+      const resp = await api.delete(`/api/coupon/delete-coupon/${id}`);
+      if (resp.data.success) {
+        setCoupons(coupons.filter(c => c._id !== id));
+        toast.success(de ? `Gutschein "${code}" gelöscht` : `Coupon "${code}" deleted`);
+      }
+    } catch (err) {
+      toast.error("Delete failed");
+    } finally {
+      setDeleteConfirm(null);
+    }
   };
 
   const toggleBanner = (id: string) => {
@@ -99,14 +184,61 @@ const AdminMarketing = () => {
     toast.success(de ? "Banner aktualisiert" : "Banner updated");
   };
 
-  const handleSendCampaign = () => {
+  const [subscribers, setSubscribers] = useState<any[]>([]);
+  const [subscriberPage, setSubscriberPage] = useState(1);
+  const [subscriberTotalPages, setSubscriberTotalPages] = useState(1);
+  const [subscriberTotal, setSubscriberTotal] = useState(0);
+  const [subLoading, setSubLoading] = useState(false);
+  const [sendingCampaign, setSendingCampaign] = useState(false);
+
+  const fetchSubscribers = async () => {
+    try {
+      setSubLoading(true);
+      const resp = await api.get("/api/subscribe/get-subscribers", {
+        params: { page: subscriberPage, limit: 10 }
+      });
+      setSubscribers(resp.data.subscribers || []);
+      setSubscriberTotalPages(resp.data.totalPages || 1);
+      setSubscriberTotal(resp.data.totalSubscribers || 0);
+    } catch (err) {
+      console.error("Failed to fetch subscribers:", err);
+      toast.error(de ? "Fehler beim Laden der Abonnenten" : "Failed to load subscribers");
+    } finally {
+      setSubLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "newsletter") {
+      fetchSubscribers();
+    }
+  }, [activeTab, subscriberPage]);
+
+  const handleSendCampaign = async () => {
     if (!emailSubject || !emailBody) {
       toast.error(de ? "Betreff und Inhalt erforderlich" : "Subject and content required");
       return;
     }
-    toast.success(de ? `Kampagne an ${mockSubscribers.filter(s => s.status === "active").length} Empfänger gesendet` : `Campaign sent to ${mockSubscribers.filter(s => s.status === "active").length} recipients`);
-    setEmailSubject("");
-    setEmailBody("");
+    
+    try {
+      setSendingCampaign(true);
+      const resp = await api.post("/api/subscribe/send-campaign", {
+        subject: emailSubject,
+        message: emailBody
+      });
+      
+      if (resp.data.success) {
+        toast.success(resp.data.message);
+        setEmailSubject("");
+        setEmailBody("");
+      } else {
+        toast.error(resp.data.error || "Failed to send campaign");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Error sending campaign");
+    } finally {
+      setSendingCampaign(false);
+    }
   };
 
   const handleRecoveryEmail = (email: string) => {
@@ -138,11 +270,17 @@ const AdminMarketing = () => {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div className="flex gap-4 text-sm">
-              <span className="text-muted-foreground">{de ? "Aktiv:" : "Active:"} <strong className="text-foreground">{coupons.filter(c => c.active).length}</strong></span>
-              <span className="text-muted-foreground">{de ? "Gesamt:" : "Total:"} <strong className="text-foreground">{coupons.length}</strong></span>
+              <span className="text-muted-foreground">{de ? "Aktiv:" : "Active:"} <strong className="text-foreground">{totalActiveCoupons}</strong></span>
+              <span className="text-muted-foreground">{de ? "Gesamt:" : "Total:"} <strong className="text-foreground">{totalCoupons}</strong></span>
             </div>
             <button
-              onClick={() => setShowCouponForm(!showCouponForm)}
+              onClick={() => {
+                setShowCouponForm(!showCouponForm);
+                if (!showCouponForm) {
+                  setEditingCoupon(null);
+                  setNewCoupon({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
+                }
+              }}
               className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
             >
               <Plus className="w-4 h-4" /> {de ? "Neuer Gutschein" : "New Coupon"}
@@ -151,7 +289,9 @@ const AdminMarketing = () => {
 
           {showCouponForm && (
             <div className="bg-card rounded-xl border border-border p-6 shadow-card">
-              <h3 className="font-display text-base font-bold text-foreground mb-4">{de ? "Gutschein erstellen" : "Create Coupon"}</h3>
+              <h3 className="font-display text-base font-bold text-foreground mb-4">
+                {editingCoupon ? (de ? "Gutschein bearbeiten" : "Edit Coupon") : (de ? "Gutschein erstellen" : "Create Coupon")}
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-1">{de ? "Gutscheincode" : "Coupon Code"}</label>
@@ -182,8 +322,10 @@ const AdminMarketing = () => {
                 </div>
               </div>
               <div className="flex gap-3 mt-4">
-                <button onClick={handleCreateCoupon} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">{de ? "Erstellen" : "Create"}</button>
-                <button onClick={() => setShowCouponForm(false)} className="bg-secondary text-foreground px-6 py-2.5 rounded-lg text-sm font-semibold">{de ? "Abbrechen" : "Cancel"}</button>
+                <button onClick={handleCreateCoupon} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
+                  {editingCoupon ? (de ? "Speichern" : "Save") : (de ? "Erstellen" : "Create")}
+                </button>
+                <button onClick={() => { setShowCouponForm(false); setEditingCoupon(null); }} className="bg-secondary text-foreground px-6 py-2.5 rounded-lg text-sm font-semibold">{de ? "Abbrechen" : "Cancel"}</button>
               </div>
             </div>
           )}
@@ -203,8 +345,16 @@ const AdminMarketing = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {coupons.map(c => (
-                    <tr key={c.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-muted-foreground">{de ? "Lädt..." : "Loading..."}</td>
+                    </tr>
+                  ) : coupons.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-muted-foreground">{de ? "Keine Gutscheine gefunden" : "No coupons found"}</td>
+                    </tr>
+                  ) : coupons.map(c => (
+                    <tr key={c._id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <Percent className="w-3.5 h-3.5 text-accent" />
@@ -222,14 +372,30 @@ const AdminMarketing = () => {
                       <td className="p-4 text-muted-foreground hidden lg:table-cell">{c.expires || "—"}</td>
                       <td className="p-4 text-center">
                         <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" checked={c.active} onChange={() => toggleCoupon(c.id)} className="sr-only peer" />
+                          <input type="checkbox" checked={c.active} onChange={() => toggleCoupon(c._id)} className="sr-only peer" />
                           <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
                         </label>
                       </td>
                       <td className="p-4 text-right">
-                        <button onClick={() => deleteCoupon(c.id, c.code)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => openEdit(c)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Bearbeiten" : "Edit"}>
+                            <Pencil className="w-4 h-4 text-accent" />
+                          </button>
+                          {deleteConfirm === c._id ? (
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => deleteCoupon(c._id, c.code)} className="px-2 py-1 bg-destructive text-destructive-foreground rounded text-xs font-semibold">
+                                {de ? "Ja" : "Yes"}
+                              </button>
+                              <button onClick={() => setDeleteConfirm(null)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                                <X className="w-4 h-4 text-muted-foreground" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setDeleteConfirm(c._id)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Löschen" : "Delete"}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -237,6 +403,47 @@ const AdminMarketing = () => {
               </table>
             </div>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2 mt-4 p-4 justify-center">
+              <button
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                className="px-3 py-1 border border-border rounded-lg disabled:opacity-50 text-sm font-medium hover:bg-secondary transition-colors"
+              >
+                {de ? "Zurück" : "Prev"}
+              </button>
+
+              {getVisiblePages().map((p, idx) =>
+                p === "..." ? (
+                  <span key={idx} className="px-2 py-1 text-muted-foreground">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p as number)}
+                    className={`px-3 py-1 border rounded-lg text-sm font-medium transition-colors ${
+                      page === p 
+                        ? "bg-primary text-primary-foreground border-primary" 
+                        : "border-border hover:bg-secondary"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={page === totalPages}
+                className="px-3 py-1 border border-border rounded-lg disabled:opacity-50 text-sm font-medium hover:bg-secondary transition-colors"
+              >
+                {de ? "Weiter" : "Next"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -280,10 +487,10 @@ const AdminMarketing = () => {
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: de ? "Abonnenten gesamt" : "Total Subscribers", value: mockSubscribers.length, icon: Users },
-              { label: de ? "Aktive Abonnenten" : "Active Subscribers", value: mockSubscribers.filter(s => s.status === "active").length, icon: Bell },
-              { label: de ? "Abgemeldet" : "Unsubscribed", value: mockSubscribers.filter(s => s.status === "unsubscribed").length, icon: Mail },
-              { label: de ? "Öffnungsrate (Ø)" : "Avg. Open Rate", value: "24.3%", icon: Percent },
+              { label: de ? "Abonnenten gesamt" : "Total Subscribers", value: subscriberTotal, icon: Users },
+              { label: de ? "Aktive Abonnenten" : "Active Subscribers", value: subscriberTotal, icon: Bell },
+              { label: de ? "Vorhandene Abonnenten" : "Subscribers Now", value: subscribers.length, icon: Mail },
+              { label: de ? "Öffnungsrate (Ø)" : "Avg. Open Rate", value: "—", icon: Percent },
             ].map(s => (
               <div key={s.label} className="bg-card rounded-xl border border-border p-4 shadow-card">
                 <s.icon className="w-5 h-5 text-accent mb-2" />
@@ -307,10 +514,20 @@ const AdminMarketing = () => {
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {de ? `Empfänger: ${mockSubscribers.filter(s => s.status === "active").length} aktive Abonnenten` : `Recipients: ${mockSubscribers.filter(s => s.status === "active").length} active subscribers`}
+                  {de ? `Empfänger: ${subscriberTotal} aktive Abonnenten` : `Recipients: ${subscriberTotal} active subscribers`}
                 </p>
-                <button onClick={handleSendCampaign} className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                  <Mail className="w-4 h-4" /> {de ? "Kampagne senden" : "Send Campaign"}
+                <button 
+                  onClick={handleSendCampaign} 
+                  disabled={sendingCampaign}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {sendingCampaign ? (
+                    <span className="animate-pulse">{de ? "Wird gesendet..." : "Sending..."}</span>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" /> {de ? "Kampagne senden" : "Send Campaign"}
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -334,13 +551,21 @@ const AdminMarketing = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockSubscribers.map(s => (
-                    <tr key={s.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  {subLoading ? (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-muted-foreground">{de ? "Lädt..." : "Loading..."}</td>
+                    </tr>
+                  ) : subscribers.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-muted-foreground">{de ? "Keine Abonnenten gefunden" : "No subscribers found"}</td>
+                    </tr>
+                  ) : subscribers.map(s => (
+                    <tr key={s._id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
                       <td className="p-4 text-foreground">{s.email}</td>
-                      <td className="p-4 text-muted-foreground hidden md:table-cell">{new Date(s.date).toLocaleDateString(de ? "de-DE" : "en-US")}</td>
+                      <td className="p-4 text-muted-foreground hidden md:table-cell">{new Date(s.createdAt).toLocaleDateString(de ? "de-DE" : "en-US")}</td>
                       <td className="p-4 text-center">
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${s.status === "active" ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"}`}>
-                          {s.status === "active" ? (de ? "Aktiv" : "Active") : (de ? "Abgemeldet" : "Unsubscribed")}
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full bg-green-500/10 text-green-600`}>
+                          {de ? "Aktiv" : "Active"}
                         </span>
                       </td>
                     </tr>
@@ -348,6 +573,31 @@ const AdminMarketing = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Subscriber Pagination */}
+            {subscriberTotalPages > 1 && (
+              <div className="flex items-center gap-2 p-4 justify-center border-t border-border bg-secondary/20">
+                <button
+                  onClick={() => setSubscriberPage(prev => Math.max(prev - 1, 1))}
+                  disabled={subscriberPage === 1}
+                  className="px-3 py-1 border border-border rounded-lg disabled:opacity-50 text-sm font-medium hover:bg-secondary transition-colors"
+                >
+                  {de ? "Zurück" : "Prev"}
+                </button>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-medium text-foreground">{subscriberPage}</span>
+                  <span className="text-muted-foreground px-1">/</span>
+                  <span className="text-sm text-muted-foreground">{subscriberTotalPages}</span>
+                </div>
+                <button
+                  onClick={() => setSubscriberPage(prev => Math.min(prev + 1, subscriberTotalPages))}
+                  disabled={subscriberPage === subscriberTotalPages}
+                  className="px-3 py-1 border border-border rounded-lg disabled:opacity-50 text-sm font-medium hover:bg-secondary transition-colors"
+                >
+                  {de ? "Weiter" : "Next"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

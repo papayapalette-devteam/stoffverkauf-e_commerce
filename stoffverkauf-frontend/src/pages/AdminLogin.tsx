@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import SEO from "@/components/SEO";
+import api from "../../api";
+import { toast } from "sonner";
 
-const ADMIN_EMAIL = "info@stoffverkauf-weber.de";
-const ADMIN_PASSWORD = "Admin@123";
-const ADMIN_SESSION_KEY = "weber_admin_session";
+export const ADMIN_SESSION_KEY = "weber_admin_session";
+export const ADMIN_TOKEN_KEY = "weber_admin_token";
 
 export const isAdminAuthenticated = () => {
   try {
-    return localStorage.getItem(ADMIN_SESSION_KEY) === "true";
+    return !!localStorage.getItem("token");
   } catch {
     return false;
   }
@@ -20,6 +21,8 @@ export const isAdminAuthenticated = () => {
 
 export const adminLogout = () => {
   localStorage.removeItem(ADMIN_SESSION_KEY);
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  delete api.defaults.headers.common["Authorization"];
 };
 
 const AdminLogin = () => {
@@ -32,20 +35,39 @@ const AdminLogin = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      if (email.trim().toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    try {
+      const res = await api.post("/api/user/login", { email, password });
+      
+      if (res.data.success) {
+        if (res.data.user.role !== 'admin') {
+           setError(de ? "Zugriff verweigert. Nur Administratoren." : "Access denied. Admins only.");
+           setLoading(false);
+           return;
+        }
+
+        const token = res.data.token;
+        localStorage.setItem("token", token);
         localStorage.setItem(ADMIN_SESSION_KEY, "true");
+        
+        // Set authorization header for future requests
+        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        
+        toast.success(de ? "Erfolgreich angemeldet" : "Logged in successfully");
         navigate("/admin");
       } else {
         setError(de ? "Ungültige Anmeldedaten." : "Invalid credentials.");
       }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.error || (de ? "Fehler beim Anmelden." : "Login failed."));
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (

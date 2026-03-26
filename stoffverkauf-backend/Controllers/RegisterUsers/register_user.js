@@ -153,5 +153,34 @@ const updateUser = async (req, res) => {
   }
 };
 
+const getAllCustomers = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-module.exports = { signup,login,updateUser };
+    const query = { role: 'customer' };
+    const totalCustomers = await User.countDocuments(query);
+    const customers = await User.find(query)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return res.status(200).json({
+      success: true,
+      customers,
+      totalCustomers,
+      totalPages: Math.ceil(totalCustomers / limit),
+      page
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      error: "server_error",
+    });
+  }
+};
+
+module.exports = { signup, login, updateUser, getAllCustomers };

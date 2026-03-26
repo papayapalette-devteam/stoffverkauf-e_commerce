@@ -10,6 +10,8 @@ import {
   Scissors,
   ShieldCheck,
   ZoomIn,
+  MessageSquare,
+  Loader2
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -87,6 +89,7 @@ const ProductDetailPage = () => {
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
   const { t, lang } = useI18n();
+  const de = lang === "de";
 
   const [meters, setMeters] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -94,8 +97,55 @@ const ProductDetailPage = () => {
   const [product, setProduct] = useState<ProductForm | null>(null);
   const [details, setDetails] = useState<ProductDetails | null>(null);
 
+  const [productFeedbacks, setProductFeedbacks] = useState<any[]>([]);
+  const [userRating, setUserRating] = useState(5);
+  const [userComment, setUserComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchFeedbacks = async () => {
+    if (!id) return;
+    try {
+      const res = await api.get(`/api/feedback/product/${id}`);
+      if (res.data.success) {
+        setProductFeedbacks(res.data.feedbacks);
+      }
+    } catch (err) {
+      console.error("Fetch feedbacks error:", err);
+    }
+  };
+
+  const submitFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    
+    // Check if standard user is logged in (from some state or context)
+    // We already have useCart, useWishlist. 
+    // What about useAuth?
+    // I noticed useAuth was available in context. Let's try to add it.
+    
+    setIsSubmitting(true);
+    try {
+      const res = await api.post('/api/feedback', {
+        productId: id,
+        rating: userRating,
+        comment: userComment
+      });
+      if (res.data.success) {
+        toast.success(de ? "Danke! Ihr Feedback wird nach der Prüfung veröffentlicht." : "Thank you! Your feedback will be published after review.");
+        setUserComment("");
+      }
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        toast.error(de ? "Bitte loggen Sie sich ein, um eine Bewertung abzugeben." : "Please login to leave a review.");
+      } else {
+        toast.error(err.response?.data?.message || "Failed to submit feedback");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const imageContainerRef = useRef<HTMLDivElement>(null);
-  const reviews = id ? mockReviews[id] || [] : [];
 
   // Fetch product by ID
   const fetchProductById = async (id: string) => {
@@ -124,7 +174,10 @@ const ProductDetailPage = () => {
   };
 
   useEffect(() => {
-    if (id) fetchProductById(id);
+    if (id) {
+      fetchProductById(id);
+      fetchFeedbacks();
+    }
   }, [id]);
 
 
@@ -202,7 +255,7 @@ useEffect(() => {
     {
     try {
       // Fetch products by category
-      const resp = await api.get(`api/products/get-product-by-category/${product.category}`, {
+      const resp = await api.get(`/api/products/get-product-by-category/${product.category}`, {
         params: { page, limit },
       });
 
@@ -492,6 +545,99 @@ useEffect(() => {
               </div>
             </motion.div>
           )}
+
+          {/* Feedback Section */}
+          <div className="mt-16 border-t border-border pt-12">
+            <h3 className="font-display text-2xl font-bold text-foreground mb-8">
+              {de ? "Kundenbewertungen" : "Customer Reviews"}
+            </h3>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+              {/* Feedback List */}
+              <div className="lg:col-span-2 space-y-6">
+                {productFeedbacks.length > 0 ? (
+                  productFeedbacks.map((f) => (
+                    <div key={f._id} className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold text-xs">
+                            {f.user?.firstName?.[0]}{f.user?.lastName?.[0]}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{f.user?.firstName} {f.user?.lastName}</p>
+                            <p className="text-[10px] text-muted-foreground">{new Date(f.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star key={s} className={`w-3 h-3 ${s <= f.rating ? "text-yellow-500 fill-yellow-500" : "text-muted"}`} />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed italic">"{f.comment}"</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground italic text-center py-10">
+                    {de ? "Noch keine Bewertungen für dieses Produkt." : "No reviews for this product yet."}
+                  </p>
+                )}
+              </div>
+
+              {/* Submit Form */}
+              <div className="bg-secondary/30 rounded-2xl p-8 border border-border h-fit">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-accent/10 rounded-lg">
+                    <MessageSquare className="w-5 h-5 text-accent" />
+                  </div>
+                  <h4 className="font-display text-lg font-bold text-foreground">
+                    {de ? "Bewertung schreiben" : "Write a review"}
+                  </h4>
+                </div>
+                
+                <form onSubmit={submitFeedback} className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-foreground block mb-2">{de ? "Sterne" : "Rating"}</label>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setUserRating(s)}
+                          className="hover:scale-110 transition-transform"
+                        >
+                          <Star className={`w-6 h-6 ${s <= userRating ? "text-yellow-500 fill-yellow-500" : "text-muted border-muted"}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground block mb-1">
+                      {de ? "Ihr Kommentar" : "Your comment"}
+                    </label>
+                    <textarea
+                      required
+                      value={userComment}
+                      onChange={(e) => setUserComment(e.target.value)}
+                      placeholder={de ? "Wie gefällt Ihnen der Stoff?" : "How do you like the fabric?"}
+                      className="w-full px-4 py-3 bg-card text-foreground rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent min-h-[120px] resize-none"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-accent text-accent-foreground py-3 rounded-xl text-sm font-bold hover:bg-accent/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {de ? "Bewertung absenden" : "Submit Review"}
+                  </button>
+                  <p className="text-[10px] text-muted-foreground text-center px-4">
+                    {de ? "* Bewertungen werden vor der Veröffentlichung geprüft." : "* Reviews are moderated before publication."}
+                  </p>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
       <Footer />

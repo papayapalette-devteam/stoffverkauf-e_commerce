@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import api from "../../api";
+import { toast } from "sonner";
 
 export type PageSection = {
   id: string;
@@ -9,111 +11,13 @@ export type PageSection = {
 };
 
 export type PageDef = {
+  _id?: string;
   id: string;
   nameDe: string;
   nameEn: string;
   path: string;
   sections: PageSection[];
 };
-
-const defaultPages: PageDef[] = [
-  {
-    id: "service",
-    nameDe: "Service",
-    nameEn: "Service",
-    path: "/service",
-    sections: [],
-  },
-  {
-    id: "shipping",
-    nameDe: "Versandbedingungen",
-    nameEn: "Shipping Terms",
-    path: "/shipping",
-    sections: [],
-  },
-  {
-    id: "samples",
-    nameDe: "Stoffmuster",
-    nameEn: "Fabric Samples",
-    path: "/samples",
-    sections: [],
-  },
-  {
-    id: "returns",
-    nameDe: "Rückgabe",
-    nameEn: "Returns",
-    path: "/returns",
-    sections: [],
-  },
-  {
-    id: "faq",
-    nameDe: "FAQ",
-    nameEn: "FAQ",
-    path: "/faq",
-    sections: [],
-  },
-  {
-    id: "legal",
-    nameDe: "Rechtliches",
-    nameEn: "Legal",
-    path: "/legal",
-    sections: [],
-  },
-  {
-    id: "agb",
-    nameDe: "AGB",
-    nameEn: "Terms & Conditions",
-    path: "/agb",
-    sections: [],
-  },
-  {
-    id: "impressum",
-    nameDe: "Impressum",
-    nameEn: "Imprint",
-    path: "/impressum",
-    sections: [],
-  },
-  {
-    id: "datenschutz",
-    nameDe: "Datenschutz",
-    nameEn: "Privacy Policy",
-    path: "/datenschutz",
-    sections: [],
-  },
-  {
-    id: "widerruf",
-    nameDe: "Widerrufsbelehrung",
-    nameEn: "Cancellation Policy",
-    path: "/widerruf",
-    sections: [],
-  },
-];
-
-const STORAGE_KEY = "weber_page_content";
-
-function loadContent(): PageDef[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as PageDef[];
-      // Merge: keep stored overrides but add any new default pages/sections
-      const merged = defaultPages.map((dp) => {
-        const sp = parsed.find((p) => p.id === dp.id);
-        if (!sp) return dp;
-        return { ...dp, sections: dp.sections.map((ds) => {
-          const ss = sp.sections.find((s) => s.id === ds.id);
-          return ss || ds;
-        })};
-      });
-      return merged;
-    }
-  } catch {}
-  return defaultPages;
-}
-
-function saveContent(pages: PageDef[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
-}
 
 type Ctx = {
   pages: PageDef[];
@@ -122,39 +26,88 @@ type Ctx = {
   addSection: (pageId: string, section: PageSection) => void;
   removeSection: (pageId: string, sectionId: string) => void;
   resetPage: (pageId: string) => void;
+  isLoading: boolean;
 };
 
 const PageContentContext = createContext<Ctx | null>(null);
 
 export const PageContentProvider = ({ children }: { children: ReactNode }) => {
-  const [pages, setPages] = useState<PageDef[]>(loadContent);
+  const [pages, setPages] = useState<PageDef[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => { saveContent(pages); }, [pages]);
+  const fetchPages = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get("/api/pages");
+      setPages(res.data);
+    } catch (err) {
+      console.error("Failed to fetch pages", err);
+      toast.error("Failed to load page content from server");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPages();
+  }, []);
 
   const getPage = (id: string) => pages.find((p) => p.id === id);
 
-  const updateSection = (pageId: string, sectionId: string, data: Partial<PageSection>) => {
-    setPages((prev) => prev.map((p) => p.id !== pageId ? p : {
-      ...p,
-      sections: p.sections.map((s) => s.id !== sectionId ? s : { ...s, ...data }),
-    }));
+  const updateSection = async (pageId: string, sectionId: string, data: Partial<PageSection>) => {
+    const page = getPage(pageId);
+    if (!page) return;
+
+    const newSections = page.sections.map((s) => s.id === sectionId ? { ...s, ...data } : s);
+    
+    try {
+        const res = await api.put(`/api/pages/${pageId}`, { ...page, sections: newSections });
+        setPages((prev) => prev.map((p) => p.id === pageId ? res.data : p));
+    } catch (err) {
+        toast.error("Failed to save changes");
+    }
   };
 
-  const addSection = (pageId: string, section: PageSection) => {
-    setPages((prev) => prev.map((p) => p.id !== pageId ? p : { ...p, sections: [...p.sections, section] }));
+  const addSection = async (pageId: string, section: PageSection) => {
+    const page = getPage(pageId);
+    if (!page) return;
+
+    const newSections = [...page.sections, section];
+    
+    try {
+        const res = await api.put(`/api/pages/${pageId}`, { ...page, sections: newSections });
+        setPages((prev) => prev.map((p) => p.id === pageId ? res.data : p));
+    } catch (err) {
+        toast.error("Failed to add section");
+    }
   };
 
-  const removeSection = (pageId: string, sectionId: string) => {
-    setPages((prev) => prev.map((p) => p.id !== pageId ? p : { ...p, sections: p.sections.filter((s) => s.id !== sectionId) }));
+  const removeSection = async (pageId: string, sectionId: string) => {
+    const page = getPage(pageId);
+    if (!page) return;
+
+    const newSections = page.sections.filter((s) => s.id !== sectionId);
+    
+    try {
+        const res = await api.put(`/api/pages/${pageId}`, { ...page, sections: newSections });
+        setPages((prev) => prev.map((p) => p.id === pageId ? res.data : p));
+    } catch (err) {
+        toast.error("Failed to remove section");
+    }
   };
 
-  const resetPage = (pageId: string) => {
-    const def = defaultPages.find((p) => p.id === pageId);
-    if (def) setPages((prev) => prev.map((p) => p.id !== pageId ? p : def));
+  const resetPage = async (pageId: string) => {
+      // For backend implementation, reset can just set sections to empty or default.
+      try {
+          const res = await api.put(`/api/pages/${pageId}`, { sections: [] });
+          setPages((prev) => prev.map((p) => p.id === pageId ? res.data : p));
+      } catch (err) {
+          toast.error("Failed to reset page");
+      }
   };
 
   return (
-    <PageContentContext.Provider value={{ pages, getPage, updateSection, addSection, removeSection, resetPage }}>
+    <PageContentContext.Provider value={{ pages, getPage, updateSection, addSection, removeSection, resetPage, isLoading }}>
       {children}
     </PageContentContext.Provider>
   );

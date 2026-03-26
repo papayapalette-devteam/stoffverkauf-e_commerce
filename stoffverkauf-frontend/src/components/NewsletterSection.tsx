@@ -15,7 +15,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   if (!email) return;
 
   try {
-    const res = await api.post("api/subscribe/add-subscribers", { email }); // ✅ use api.post
+    const res = await api.post("/api/subscribe/add-subscribers", { email }); // ✅ use api.post
 
     const data = res.data;
 

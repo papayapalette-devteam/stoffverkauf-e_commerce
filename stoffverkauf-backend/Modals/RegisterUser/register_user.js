@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   agreed: { type: Boolean, required: true }, 
   phone: { type: Number},
   address: { type: String },
+  role: { type: String, enum: ['customer', 'admin'], default: 'customer' },
 }, { timestamps: true });
 
 module.exports= mongoose.model("User", userSchema);

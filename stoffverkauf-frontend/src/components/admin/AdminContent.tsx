@@ -21,23 +21,31 @@ const mockSections = [
 ];
 
 interface BlogPost {
-  _id: string; // ✅ FIXED
+  _id: string;
   title: string;
   status: "published" | "draft";
   date: string;
   excerpt: string;
   content: string;
-  image?: File | string;
+  image?: string;
 }
 
+const emptyPost: Omit<BlogPost, "_id"> = { 
+  title: "", 
+  status: "draft", 
+  date: new Date().toISOString().split("T")[0], 
+  excerpt: "", 
+  content: "",
+  image: "" 
+};
 
-const emptyPost: Omit<BlogPost, "id"> = { title: "", status: "draft", date: new Date().toISOString().split("T")[0], excerpt: "", content: "",image:"" };
 
 const AdminContent = () => {
   const { lang } = useI18n();
   const de = lang === "de";
   const [activeTab, setActiveTab] = useState<"sections" | "hero" | "blog" | "pages">("pages");
-  const [sections, setSections] = useState(mockSections);
+  const [sections, setSections] = useState<any[]>([]);
+  const [loadingSections, setLoadingSections] = useState(true);
   const [heroForm, setHeroForm] = useState({
     badge: "Neue Kollektion 2026",
     title1: "Italienische",
@@ -51,13 +59,42 @@ const AdminContent = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [blogDialogOpen, setBlogDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
-  const [postForm, setPostForm] = useState<Omit<BlogPost, "id">>(emptyPost);
+  const [postForm, setPostForm] = useState<Omit<BlogPost, "_id">>(emptyPost);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const toggleSection = (id: string) => {
-    setSections((prev) => prev.map((s) => s.id === id ? { ...s, enabled: !s.enabled } : s));
-    toast.success(de ? "Sektion aktualisiert" : "Section updated");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [uploading, setUploading] = useState(false);
+
+
+  const fetchSections = async () => {
+    try {
+      setLoadingSections(true);
+      const res = await api.get("/api/home-sections");
+      setSections(res.data);
+    } catch (err) {
+      console.error("Failed to fetch sections", err);
+    } finally {
+      setLoadingSections(false);
+    }
   };
+
+  useEffect(() => {
+    fetchSections();
+  }, []);
+
+  const toggleSection = async (id: string, currentStatus: boolean) => {
+    try {
+        const res = await api.put(`/api/home-sections/${id}`, { enabled: !currentStatus });
+        setSections((prev) => prev.map((s) => s.id === id ? res.data : s));
+        toast.success(de ? "Sektion aktualisiert" : "Section updated");
+    } catch (err) {
+        toast.error("Failed to update section");
+    }
+  };
+
+
 
   // Blog handlers
   const openNewPost = () => {
@@ -74,9 +111,7 @@ const AdminContent = () => {
 
 
 
-    const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
+
 
   const MAX_VISIBLE = 5;
 
@@ -136,7 +171,7 @@ useEffect(()=>
 
 },[page])
 
-    const [uploading, setUploading] = useState(false);
+
 
   const handleUploadFiles = async (files: File[]) => {
   try {
@@ -270,19 +305,24 @@ const handleDeletePost = async (id: string) => {
             <p className="text-sm text-muted-foreground">{de ? "Sektionen ein-/ausblenden und neu anordnen" : "Toggle and reorder homepage sections"}</p>
           </div>
           <div className="divide-y divide-border">
-            {sections.map((section) => (
-              <div key={section.id} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
-                <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-foreground">{section.title}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{section.type}</p>
+            {loadingSections ? (
+              <div className="p-8 text-center text-muted-foreground">{de ? "Wird geladen..." : "Loading..."}</div>
+            ) : (
+              sections.map((section) => (
+                <div key={section.id} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
+                  <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">{section.title}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{section.type}</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={section.enabled} onChange={() => toggleSection(section.id, section.enabled)} className="sr-only peer" />
+                    <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={section.enabled} onChange={() => toggleSection(section.id)} className="sr-only peer" />
-                  <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
-                </label>
-              </div>
-            ))}
+              ))
+            )}
+
           </div>
         </div>
       )}

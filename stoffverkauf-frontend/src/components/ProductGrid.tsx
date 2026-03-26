@@ -25,7 +25,7 @@ const ProductGrid = () => {
     useEffect(() => {
       const fetchCategories = async () => {
         try {
-          const resp = await api.get("api/category/get-categories");
+          const resp = await api.get("/api/category/get-categories");
   
           const mapped = resp.data.data.map((cat) => ({
             id: cat._id,
@@ -131,12 +131,12 @@ useEffect(() => {
 
       if (activeCategory === "all") {
         // Fetch all products
-        resp = await api.get("api/products/get-product", {
+        resp = await api.get("/api/products/get-product", {
           params: { page, limit },
         });
       } else {
         // Fetch products by category
-        resp = await api.get(`api/products/get-product-by-category/${activeCategory}`, {
+        resp = await api.get(`/api/products/get-product-by-category/${activeCategory}`, {
           params: { page, limit },
         });
       }

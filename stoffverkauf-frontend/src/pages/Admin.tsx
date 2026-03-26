@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, ShoppingBag, BarChart3, FileText, Settings, Plug, ChevronLeft, ChevronRight, LogOut, Users, Megaphone, RotateCcw, FolderOpen } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { LayoutDashboard, Package, ShoppingBag, BarChart3, FileText, Settings, Plug, ChevronLeft, ChevronRight, LogOut, Users, Megaphone, RotateCcw, FolderOpen, MessageSquare } from "lucide-react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { isAdminAuthenticated, adminLogout } from "./AdminLogin";
-import { Link } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
 import SEO from "@/components/SEO";
 import AdminProducts from "@/components/admin/AdminProducts";
@@ -16,12 +15,18 @@ import AdminCustomers from "@/components/admin/AdminCustomers";
 import AdminMarketing from "@/components/admin/AdminMarketing";
 import AdminReturns from "@/components/admin/AdminReturns";
 import AdminCategories from "@/components/admin/AdminCategories";
+import AdminFeedback from "@/components/admin/AdminFeedback";
 
 const Admin = () => {
   const { lang } = useI18n();
   const de = lang === "de";
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const location = useLocation();
+
+  // URL-based active section
+  const pathParts = location.pathname.split("/").filter(Boolean);
+  const activeSection = pathParts[1] || "dashboard";
+
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -29,6 +34,10 @@ const Admin = () => {
       navigate("/admin/login", { replace: true });
     }
   }, [navigate]);
+
+  const setSection = (id: string) => {
+    navigate(`/admin/${id}`);
+  };
 
   const handleLogout = () => {
     adminLogout();
@@ -46,6 +55,7 @@ const Admin = () => {
     { id: "customers", label: de ? "Kunden" : "Customers", icon: Users },
     { id: "analytics", label: de ? "Analyse" : "Analytics", icon: BarChart3 },
     { id: "marketing", label: de ? "Marketing" : "Marketing", icon: Megaphone },
+    { id: "feedback", label: de ? "Feedback" : "Feedback", icon: MessageSquare },
     { id: "content", label: de ? "Inhalte" : "Content", icon: FileText },
     { id: "integrations", label: de ? "Integrationen" : "Integrations", icon: Plug },
     { id: "settings", label: de ? "Einstellungen" : "Settings", icon: Settings },
@@ -61,6 +71,7 @@ const Admin = () => {
       case "customers": return <AdminCustomers />;
       case "analytics": return <AdminAnalytics />;
       case "marketing": return <AdminMarketing />;
+      case "feedback": return <AdminFeedback />;
       case "content": return <AdminContent />;
       case "integrations": return <AdminIntegrations />;
       case "settings": return <AdminSettings />;
@@ -89,7 +100,7 @@ const Admin = () => {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveSection(item.id)}
+              onClick={() => setSection(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 activeSection === item.id
                   ? "bg-accent/10 text-accent"

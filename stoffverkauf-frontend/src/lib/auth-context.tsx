@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import api from "../../api"; // Axios instance pointing to backend
 
 export interface AuthUser {
+  _id: string;
   firstName: string;
   lastName: string;
   email: string;

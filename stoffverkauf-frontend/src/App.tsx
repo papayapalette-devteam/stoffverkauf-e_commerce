@@ -9,6 +9,8 @@ import { WishlistProvider } from "@/lib/wishlist-context";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-context";
 import { PageContentProvider } from "@/lib/page-content";
+import { HomeSectionsProvider } from "@/lib/home-sections";
+
 import CookieConsent from "@/components/CookieConsent";
 import ScrollToTop from "@/components/ScrollToTop";
 import Index from "./pages/Index";
@@ -47,42 +49,45 @@ const App = () => (
           <AuthProvider>
             <CartProvider>
               <WishlistProvider>
-                <PageContentProvider>
-                  <Toaster />
-                  <Sonner />
-                  <BrowserRouter>
-                    <ScrollToTop />
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/product/:id" element={<ProductDetail />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/signup" element={<Signup />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/checkout" element={<Checkout />} />
-                      <Route path="/wishlist" element={<Wishlist />} />
-                      <Route path="/orders" element={<Orders />} />
-                      <Route path="/orders/:id" element={<Orders />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route path="/faq" element={<FAQ />} />
-                      <Route path="/blog" element={<Blog />} />
-                      <Route path="/blog/:id" element={<BlogPost />} />
-                      <Route path="/admin/login" element={<AdminLogin />} />
-                      <Route path="/admin" element={<Admin />} />
-                      <Route path="/impressum" element={<Impressum />} />
-                      <Route path="/datenschutz" element={<Datenschutz />} />
-                      <Route path="/agb" element={<AGB />} />
-                      <Route path="/widerruf" element={<Widerruf />} />
-                      <Route path="/service" element={<Service />} />
-                      <Route path="/shipping" element={<Shipping />} />
-                      <Route path="/samples" element={<Samples />} />
-                      <Route path="/returns" element={<Returns />} />
-                      <Route path="/legal" element={<Legal />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                    <CookieConsent />
-                  </BrowserRouter>
-                </PageContentProvider>
+                <HomeSectionsProvider>
+                  <PageContentProvider>
+                    <Toaster />
+                    <Sonner />
+                    <BrowserRouter>
+                      <ScrollToTop />
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/product/:id" element={<ProductDetail />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/signup" element={<Signup />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/checkout" element={<Checkout />} />
+                        <Route path="/wishlist" element={<Wishlist />} />
+                        <Route path="/orders" element={<Orders />} />
+                        <Route path="/orders/:id" element={<Orders />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/faq" element={<FAQ />} />
+                        <Route path="/blog" element={<Blog />} />
+                        <Route path="/blog/:id" element={<BlogPost />} />
+                        <Route path="/admin/login" element={<AdminLogin />} />
+                        <Route path="/admin/*" element={<Admin />} />
+                        <Route path="/impressum" element={<Impressum />} />
+                        <Route path="/datenschutz" element={<Datenschutz />} />
+                        <Route path="/agb" element={<AGB />} />
+                        <Route path="/widerruf" element={<Widerruf />} />
+                        <Route path="/service" element={<Service />} />
+                        <Route path="/shipping" element={<Shipping />} />
+                        <Route path="/samples" element={<Samples />} />
+                        <Route path="/returns" element={<Returns />} />
+                        <Route path="/legal" element={<Legal />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                      <CookieConsent />
+                    </BrowserRouter>
+                  </PageContentProvider>
+                </HomeSectionsProvider>
+
               </WishlistProvider>
             </CartProvider>
           </AuthProvider>

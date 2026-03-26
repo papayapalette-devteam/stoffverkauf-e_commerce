@@ -16,7 +16,14 @@ exports.authMiddleware = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
-    console.error(err);
     return res.status(401).json({ success: false, error: "unauthorized" });
   }
 };
+
+exports.adminMiddleware = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ success: false, error: "Access denied. Admins only." });
+  }
+};

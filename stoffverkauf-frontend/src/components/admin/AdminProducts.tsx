@@ -180,7 +180,7 @@ const [products, setproducts] = useState<ProductForm[]>([]);
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const resp = await api.get("api/products/get-product", {
+        const resp = await api.get("/api/products/get-product", {
           params: { page, limit,search },
         });
 
@@ -247,7 +247,7 @@ const removeImage = (index: number) => {
   const handleSave = async() => {
 
     try {
-        const response = await api.post("api/products/add-product",form);
+        const response = await api.post("/api/products/add-product",form);
 
         toast.success(form._id ? (de ? "Produkt aktualisiert" : "Product updated") : (de ? "Produkt erstellt" : "Product created"));
         setShowForm(false);
@@ -281,7 +281,7 @@ const handleDelete = async (id: string, name: string) => {
   if (!confirmDelete) return;
 
   try {
-    await api.delete(`api/products/delete-product/${id}`);
+    await api.delete(`/api/products/delete-product/${id}`);
 
     toast.success(
       de ? `"${name}" gelöscht` : `"${name}" deleted`

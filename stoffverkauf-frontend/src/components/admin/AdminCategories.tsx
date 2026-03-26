@@ -132,7 +132,7 @@ const getVisiblePages = () => {
       }
 
 
-      const { data } = await api.post("api/category/save-category", form);
+      const { data } = await api.post("/api/category/save-category", form);
 
       toast.success(data.message);
 
@@ -165,7 +165,7 @@ const getVisiblePages = () => {
     try {
 
       // Call your API
-      await api.delete(`api/category/delete-category/${id}`);
+      await api.delete(`/api/category/delete-category/${id}`);
       toast.success(
         de ? ` gelöscht` : ` deleted`
       );

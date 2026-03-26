@@ -26,11 +26,17 @@ const corsOptions = {
     "https://admin.made4ever.in",
     "https://stoffverkauf-e-commerce-w7li.vercel.app",
     "http://localhost:8080",
+    "http://localhost:8081",
     "http://localhost:3000",
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"],
   credentials: true,
 };
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions)); 
@@ -59,6 +65,15 @@ app.use('/api/wishlist',require('./Routes/wishlist'));
 app.use('/api/subscribe',require('./Routes/subscribers'));
 
 app.use('/api/blog',require('./Routes/blog'));
+
+app.use('/api/coupon',require('./Routes/coupon'));
+app.use('/api/feedback',require('./Routes/feedback'));
+app.use('/api/order',require('./Routes/order'));
+app.use('/api/integration',require('./Routes/integration'));
+app.use('/api/pages', require('./Routes/pages'));
+app.use('/api/home-sections', require('./Routes/homeSections'));
+
+
 
 
 // ===============================================

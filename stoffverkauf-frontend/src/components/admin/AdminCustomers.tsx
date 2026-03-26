@@ -1,168 +1,188 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Search, Eye, Mail, Phone, MapPin, ShoppingBag, X, UserPlus } from "lucide-react";
+import { Search, Eye, Mail, Phone, MapPin, X, Calendar } from "lucide-react";
+import api from "../../../api";
+import axios from "axios";
+import { toast } from "sonner";
 
 interface Customer {
-  id: string;
-  name: string;
+  _id: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone: string;
-  city: string;
-  totalOrders: number;
-  totalSpent: number;
-  lastOrder: string;
-  status: "active" | "inactive";
-  orders: { id: string; date: string; total: number; status: string }[];
+  phone?: string;
+  address?: string;
+  createdAt: string;
 }
 
-const mockCustomers: Customer[] = [
-  {
-    id: "C001", name: "Maria Schmidt", email: "maria.schmidt@email.de", phone: "+49 170 1234567",
-    city: "München", totalOrders: 12, totalSpent: 2340.80, lastOrder: "2026-02-15", status: "active",
-    orders: [
-      { id: "ORD-2026-001", date: "2026-02-15", total: 399.50, status: "delivered" },
-      { id: "ORD-2026-008", date: "2026-01-20", total: 189.90, status: "delivered" },
-      { id: "ORD-2025-042", date: "2025-12-10", total: 549.00, status: "delivered" },
-    ],
-  },
-  {
-    id: "C002", name: "Thomas Keller", email: "t.keller@email.de", phone: "+49 151 9876543",
-    city: "Berlin", totalOrders: 5, totalSpent: 890.50, lastOrder: "2026-02-10", status: "active",
-    orders: [
-      { id: "ORD-2026-002", date: "2026-02-10", total: 99.90, status: "shipped" },
-      { id: "ORD-2026-005", date: "2026-01-05", total: 259.80, status: "delivered" },
-    ],
-  },
-  {
-    id: "C003", name: "Anna Braun", email: "anna.braun@email.de", phone: "+49 160 5551234",
-    city: "Hamburg", totalOrders: 8, totalSpent: 1560.20, lastOrder: "2026-01-28", status: "active",
-    orders: [
-      { id: "ORD-2026-003", date: "2026-01-28", total: 309.50, status: "processing" },
-      { id: "ORD-2025-039", date: "2025-11-15", total: 420.00, status: "delivered" },
-    ],
-  },
-  {
-    id: "C004", name: "Klaus Müller", email: "k.mueller@email.de", phone: "+49 172 3334455",
-    city: "Frankfurt", totalOrders: 2, totalSpent: 179.80, lastOrder: "2025-11-20", status: "inactive",
-    orders: [
-      { id: "ORD-2025-028", date: "2025-11-20", total: 99.90, status: "delivered" },
-      { id: "ORD-2025-015", date: "2025-09-05", total: 79.90, status: "delivered" },
-    ],
-  },
-  {
-    id: "C005", name: "Petra Weber", email: "petra.w@email.de", phone: "+49 175 6667788",
-    city: "Köln", totalOrders: 15, totalSpent: 3210.40, lastOrder: "2026-02-16", status: "active",
-    orders: [
-      { id: "ORD-2026-004", date: "2026-02-16", total: 459.70, status: "processing" },
-      { id: "ORD-2026-007", date: "2026-02-01", total: 189.90, status: "delivered" },
-      { id: "ORD-2026-006", date: "2026-01-12", total: 339.80, status: "delivered" },
-    ],
-  },
-  {
-    id: "C006", name: "Stefan Hoffmann", email: "s.hoffmann@email.de", phone: "+49 163 1112233",
-    city: "Stuttgart", totalOrders: 3, totalSpent: 450.00, lastOrder: "2026-01-05", status: "active",
-    orders: [
-      { id: "ORD-2026-009", date: "2026-01-05", total: 150.00, status: "delivered" },
-    ],
-  },
-];
+interface Order {
+  _id: string;
+  createdAt: string;
+  total: number;
+  status: string;
+}
 
 const AdminCustomers = () => {
   const { lang } = useI18n();
   const de = lang === "de";
+  
+  // Customers List State
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Customer Detail / Orders State
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
-  const filtered = mockCustomers.filter((c) => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Fetch Customers
+  const fetchCustomers = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/api/user/get-all-customers", {
+        params: { page, limit, search }
+      });
+      if (res.data.success) {
+        setCustomers(res.data.customers);
+        setTotalCustomers(res.data.totalCustomers);
+        setTotalPages(res.data.totalPages);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(de ? "Fehler beim Laden der Kunden" : "Error loading customers");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const totalRevenue = mockCustomers.reduce((sum, c) => sum + c.totalSpent, 0);
-  const activeCount = mockCustomers.filter((c) => c.status === "active").length;
+  useEffect(() => {
+    fetchCustomers();
+  }, [page, search]);
+
+  // Fetch Specific User Orders
+  const handleViewOrders = async (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setOrdersLoading(true);
+    setCustomerOrders([]);
+    try {
+      const res = await api.get(`/api/order/my/${customer._id}`);
+      if (res.data.success) {
+        setCustomerOrders(res.data.orders);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(de ? "Fehler beim Laden der Bestellungen" : "Error loading orders");
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const getVisiblePages = () => {
+    const pages = [];
+    const MAX_VISIBLE = 5;
+    let start = Math.max(1, page - Math.floor(MAX_VISIBLE / 2));
+    let end = start + MAX_VISIBLE - 1;
+
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(1, end - MAX_VISIBLE + 1);
+    }
+
+    if (start > 1) {
+      pages.push(1);
+      if (start > 2) pages.push("...");
+    }
+    for (let i = start; i <= end; i++) {
+        if(i > 0) pages.push(i);
+    }
+    if (end < totalPages) {
+      if (end < totalPages - 1) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="font-display text-2xl font-bold text-foreground">
           {de ? "Kunden" : "Customers"}{" "}
-          <span className="text-muted-foreground font-body text-base">({mockCustomers.length})</span>
+          <span className="text-muted-foreground font-body text-base">({totalCustomers})</span>
         </h2>
         <div className="flex gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder={de ? "Kunde suchen..." : "Search customer..."}
               className="pl-10 pr-4 py-2 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent w-52"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          >
-            <option value="all">{de ? "Alle" : "All"}</option>
-            <option value="active">{de ? "Aktiv" : "Active"}</option>
-            <option value="inactive">{de ? "Inaktiv" : "Inactive"}</option>
-          </select>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: de ? "Gesamt Kunden" : "Total Customers", value: mockCustomers.length },
-          { label: de ? "Aktive Kunden" : "Active Customers", value: activeCount },
-          { label: de ? "Gesamtumsatz" : "Total Revenue", value: `${totalRevenue.toFixed(2)} €` },
-          { label: de ? "Ø Bestellwert" : "Avg Order Value", value: `${(totalRevenue / mockCustomers.reduce((s, c) => s + c.totalOrders, 0)).toFixed(2)} €` },
-        ].map((s) => (
-          <div key={s.label} className="bg-card rounded-xl border border-border p-4 shadow-card">
-            <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-            <p className="font-display text-xl font-bold text-foreground">{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Customer Detail Drawer */}
+      {/* Customer Detail Detail / Orders View */}
       {selectedCustomer && (
         <div className="bg-card rounded-xl border border-border p-6 shadow-card space-y-4">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-display text-lg font-bold text-foreground">{selectedCustomer.name}</h3>
-              <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${selectedCustomer.status === "active" ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"}`}>
-                {selectedCustomer.status === "active" ? (de ? "Aktiv" : "Active") : (de ? "Inaktiv" : "Inactive")}
-              </span>
+              <h3 className="font-display text-lg font-bold text-foreground">
+                {selectedCustomer.firstName} {selectedCustomer.lastName}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">{selectedCustomer.email}</p>
             </div>
             <button onClick={() => setSelectedCustomer(null)} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" /> {selectedCustomer.email}</div>
-            <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" /> {selectedCustomer.phone}</div>
-            <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="w-4 h-4" /> {selectedCustomer.city}</div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div><p className="text-muted-foreground">{de ? "Bestellungen" : "Orders"}</p><p className="font-semibold text-foreground">{selectedCustomer.totalOrders}</p></div>
-            <div><p className="text-muted-foreground">{de ? "Umsatz" : "Revenue"}</p><p className="font-semibold text-foreground">{selectedCustomer.totalSpent.toFixed(2)} €</p></div>
-            <div><p className="text-muted-foreground">{de ? "Letzte Bestellung" : "Last Order"}</p><p className="font-semibold text-foreground">{new Date(selectedCustomer.lastOrder).toLocaleDateString(de ? "de-DE" : "en-US")}</p></div>
-          </div>
-          <div className="border-t border-border pt-4">
-            <h4 className="text-sm font-semibold text-foreground mb-3">{de ? "Bestellhistorie" : "Order History"}</h4>
-            <div className="space-y-2">
-              {selectedCustomer.orders.map((o) => (
-                <div key={o.id} className="flex items-center justify-between py-2 px-3 bg-secondary/50 rounded-lg text-sm">
-                  <span className="font-medium text-foreground">{o.id}</span>
-                  <span className="text-muted-foreground">{new Date(o.date).toLocaleDateString(de ? "de-DE" : "en-US")}</span>
-                  <span className="capitalize text-muted-foreground">{o.status}</span>
-                  <span className="font-semibold text-foreground">{o.total.toFixed(2)} €</span>
-                </div>
-              ))}
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mt-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Phone className="w-4 h-4" /> {selectedCustomer.phone || (de ? "Keine Telefonnummer" : "No phone")}
             </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="w-4 h-4" /> {selectedCustomer.address || (de ? "Keine Adresse" : "No address")}
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground col-span-2">
+              <Calendar className="w-4 h-4" /> 
+              {de ? "Registriert am:" : "Registered on:"} {new Date(selectedCustomer.createdAt).toLocaleDateString(de ? "de-DE" : "en-US")}
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-4 mt-4">
+            <h4 className="text-sm font-semibold text-foreground mb-3">
+                {de ? "Bestellhistorie" : "Order History"} {customerOrders.length > 0 && `(${customerOrders.length})`}
+            </h4>
+            {ordersLoading ? (
+               <div className="text-center py-4 text-muted-foreground">Loading orders...</div>
+            ) : customerOrders.length > 0 ? (
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                {customerOrders.map((o) => (
+                  <div key={o._id} className="flex items-center justify-between py-2 px-3 bg-secondary/50 rounded-lg text-sm">
+                    <span className="font-medium text-foreground">{o._id.substring(o._id.length - 8).toUpperCase()}</span>
+                    <span className="text-muted-foreground">{new Date(o.createdAt).toLocaleDateString(de ? "de-DE" : "en-US")}</span>
+                    <span className={`capitalize px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      o.status === "delivered" ? "bg-green-500/10 text-green-600" : 
+                      o.status === "cancelled" ? "bg-red-500/10 text-red-600" : 
+                      "bg-blue-500/10 text-blue-600"
+                    }`}>
+                        {o.status}
+                    </span>
+                    <span className="font-semibold text-foreground">{o.total.toFixed(2)} €</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+                <div className="text-center py-4 text-muted-foreground italic">
+                    {de ? "Keine Bestellungen gefunden" : "No orders found for this customer"}
+                </div>
+            )}
           </div>
         </div>
       )}
@@ -172,38 +192,90 @@ const AdminCustomers = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-secondary/50">
-                <th className="text-left p-4 text-muted-foreground font-medium">{de ? "Kunde" : "Customer"}</th>
-                <th className="text-left p-4 text-muted-foreground font-medium hidden md:table-cell">Email</th>
-                <th className="text-left p-4 text-muted-foreground font-medium hidden lg:table-cell">{de ? "Stadt" : "City"}</th>
-                <th className="text-right p-4 text-muted-foreground font-medium">{de ? "Bestellungen" : "Orders"}</th>
-                <th className="text-right p-4 text-muted-foreground font-medium">{de ? "Umsatz" : "Revenue"}</th>
-                <th className="text-center p-4 text-muted-foreground font-medium">Status</th>
-                <th className="text-right p-4 text-muted-foreground font-medium">{de ? "Aktionen" : "Actions"}</th>
+              <tr className="border-b border-border bg-secondary/50 text-muted-foreground font-medium">
+                <th className="text-left p-4">{de ? "Kunde" : "Customer"}</th>
+                <th className="text-left p-4">Email</th>
+                <th className="text-left p-4 hidden md:table-cell">{de ? "Telefon" : "Phone"}</th>
+                <th className="text-left p-4 hidden lg:table-cell font-body">{de ? "Adresse" : "Address"}</th>
+                <th className="text-left p-4 hidden lg:table-cell">{de ? "Erstellt am" : "Created At"}</th>
+                <th className="text-right p-4">{de ? "Aktionen" : "Actions"}</th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                  <td className="p-4 font-medium text-foreground">{c.name}</td>
-                  <td className="p-4 text-muted-foreground hidden md:table-cell">{c.email}</td>
-                  <td className="p-4 text-muted-foreground hidden lg:table-cell">{c.city}</td>
-                  <td className="p-4 text-right text-foreground">{c.totalOrders}</td>
-                  <td className="p-4 text-right font-semibold text-foreground">{c.totalSpent.toFixed(2)} €</td>
-                  <td className="p-4 text-center">
-                    <span className={`text-xs px-2 py-1 rounded-full ${c.status === "active" ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"}`}>
-                      {c.status === "active" ? (de ? "Aktiv" : "Active") : (de ? "Inaktiv" : "Inactive")}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button onClick={() => setSelectedCustomer(c)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
-                      <Eye className="w-4 h-4 text-accent" />
-                    </button>
-                  </td>
+            <tbody className="divide-y divide-border">
+              {loading ? (
+                <tr>
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground">Loading customers...</td>
                 </tr>
-              ))}
+              ) : customers.length > 0 ? (
+                customers.map((c) => (
+                    <tr key={c._id} className="hover:bg-secondary/30 transition-colors">
+                      <td className="p-4 font-medium text-foreground">{c.firstName} {c.lastName}</td>
+                      <td className="p-4 text-muted-foreground text-xs">{c.email}</td>
+                      <td className="p-4 text-muted-foreground hidden md:table-cell">{c.phone || "-"}</td>
+                      <td className="p-4 text-muted-foreground hidden lg:table-cell max-w-xs truncate overflow-hidden">{c.address || "-"}</td>
+                      <td className="p-4 text-muted-foreground hidden lg:table-cell">
+                        {new Date(c.createdAt).toLocaleDateString(de ? "de-DE" : "en-US")}
+                      </td>
+                      <td className="p-4 text-right">
+                        <button 
+                            onClick={() => handleViewOrders(c)} 
+                            className="p-2 hover:bg-secondary rounded-lg transition-colors group"
+                            title={de ? "Bestellungen ansehen" : "View orders"}
+                        >
+                          <Eye className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+              ) : (
+                <tr>
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground">No customers found.</td>
+                </tr>
+              )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between mt-4">
+        <p className="text-xs text-muted-foreground">
+            {de ? "Seite" : "Page"} <span className="font-semibold text-foreground">{page}</span> {de ? "von" : "of"} <span className="font-semibold text-foreground">{totalPages}</span>
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-1 text-xs border border-border rounded-md hover:bg-secondary disabled:opacity-50 transition-colors"
+          >
+            {de ? "Zurück" : "Prev"}
+          </button>
+          
+          <div className="flex items-center gap-1 mx-2">
+            {getVisiblePages().map((p, idx) => (
+              p === "..." ? (
+                <span key={`dots-${idx}`} className="px-2 text-muted-foreground">...</span>
+              ) : (
+                <button
+                  key={`page-${p}`}
+                  onClick={() => setPage(p as number)}
+                  className={`w-7 h-7 flex items-center justify-center text-xs rounded-md transition-colors ${
+                    page === p ? "bg-accent text-accent-foreground font-bold" : "hover:bg-secondary text-muted-foreground"
+                  }`}
+                >
+                  {p}
+                </button>
+              )
+            ))}
+          </div>
+
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-1 text-xs border border-border rounded-md hover:bg-secondary disabled:opacity-50 transition-colors"
+          >
+            {de ? "Weiter" : "Next"}
+          </button>
         </div>
       </div>
     </div>
