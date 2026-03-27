@@ -125,10 +125,12 @@ useEffect(() => {
     <div className="flex items-end justify-between mb-10">
       <div>
         <h2 className="font-display text-3xl lg:text-4xl font-bold text-foreground">
-          {t("best.title")}
+          {/* {t("best.title")} */}
+          Our Premium Products
         </h2>
         <p className="text-muted-foreground mt-2 font-body">
-          {t("best.subtitle")}
+          {/* {t("best.subtitle")} */}
+          Our customers' most premium fabrics
         </p>
       </div>
 

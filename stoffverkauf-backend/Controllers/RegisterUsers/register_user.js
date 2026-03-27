@@ -121,15 +121,15 @@ const updateUser = async (req, res) => {
     // }
 
     // If email is being updated → check duplicate
-    if (req.body.email) {
-      const existingUser = await User.findOne({ email: req.body.email });
-      if (existingUser && existingUser._id.toString() !== userId) {
-        return res.status(400).json({
-          success: false,
-          error: "email_exists",
-        });
-      }
-    }
+    // if (req.body.email) {
+    //   const existingUser = await User.findOne({ email: req.body.email });
+    //   if (existingUser && existingUser._id.toString() !== userId) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       error: "email_exists",
+    //     });
+    //   }
+    // }
 
     // Update user
     const updatedUser = await User.findByIdAndUpdate(
