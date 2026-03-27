@@ -4,7 +4,7 @@ const Product = require('../../Modals/AddProducts/add_products');
 // Create Order
 exports.createOrder = async (req, res) => {
   try {
-    const { user, items, total, shippingAddress, paymentMethod } = req.body;
+    const { user, items, total, shippingAddress, paymentMethod, discount, appliedCoupon } = req.body;
 
     // Check if items array is empty
     if (!items || items.length === 0) {
@@ -17,11 +17,26 @@ exports.createOrder = async (req, res) => {
       total,
       shippingAddress,
       paymentMethod,
+      discount: discount || 0,
+      appliedCoupon: appliedCoupon || "",
       isPaid: false, // Default will wait for payment
       status: 'processing'
     });
 
     await order.save();
+
+    // If coupon was used, increment usage
+    if (appliedCoupon) {
+      try {
+        const Coupon = require('../../Modals/Marketing/coupon');
+        await Coupon.findOneAndUpdate(
+          { code: appliedCoupon.toUpperCase() },
+          { $inc: { uses: 1 } }
+        );
+      } catch (couponErr) {
+        console.error("Failed to increment coupon uses:", couponErr);
+      }
+    }
 
     // Send confirmation email
     try {

@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
+import { useSettings } from "@/lib/settings-context";
 
 const Footer = () => {
   const { t, lang } = useI18n();
+  const { settings } = useSettings();
 
   const linkGroups = [
     {
@@ -49,15 +51,14 @@ const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="font-display text-xl font-bold text-foreground">
-              Stoffverkauf<span className="text-gradient-accent"> Weber</span>
+              {settings.general.storeName || "Stoffverkauf Weber"}
             </Link>
             <p className="text-sm text-muted-foreground mt-3 font-body leading-relaxed">
               {t("footer.desc")}
             </p>
             <p className="text-xs text-muted-foreground mt-3 font-body">
-              Tel: 06171/53159
-              <br />
-              info@stoffverkauf-weber.de
+              {settings.general.phone && <>Tel: {settings.general.phone}<br /></>}
+              {settings.general.email && <>{settings.general.email}</>}
             </p>
           </div>
 
@@ -91,7 +92,7 @@ const Footer = () => {
 
         <div className="border-t border-border mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground font-body">
-            © 2026 Stoffverkauf Weber. {t("footer.rights")}
+            © {new Date().getFullYear()} {settings.general.storeName || "Stoffverkauf Weber"}. {t("footer.rights")}
           </p>
           <div className="flex gap-6">
             {["Facebook", "Instagram"].map((social) => (

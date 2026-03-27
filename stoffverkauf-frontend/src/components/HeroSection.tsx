@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import api from "../../api";
 import heroBanner from "@/assets/hero-banner.jpg";
 import hero1 from "@/assets/hero-1.png";
 import hero2 from "@/assets/hero-2.png";
 
-const slides = [
+const staticSlides = [
   { image: heroBanner, key: "main" },
   { image: hero1, key: "hero1" },
   { image: hero2, key: "hero2" },
@@ -15,9 +16,29 @@ const slides = [
 const HeroSection = () => {
   const { t } = useI18n();
   const [current, setCurrent] = useState(0);
+  const [heroData, setHeroData] = useState<any>(null);
 
-  const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), []);
-  const prev = useCallback(() => setCurrent((c) => (c - 1 + slides.length) % slides.length), []);
+  useEffect(() => {
+    const fetchHero = async () => {
+      try {
+        const res = await api.get("/api/home-sections");
+        const hero = res.data.find((s: any) => s.id === "hero");
+        if (hero && hero.enabled && hero.data) {
+          setHeroData(hero.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch hero section", err);
+      }
+    };
+    fetchHero();
+  }, []);
+
+  const slides = heroData?.images?.length > 0 
+    ? heroData.images.map((img: string, i: number) => ({ image: img, key: `dynamic-${i}` }))
+    : staticSlides;
+
+  const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), [slides.length]);
+  const prev = useCallback(() => setCurrent((c) => (c - 1 + slides.length) % slides.length), [slides.length]);
 
   useEffect(() => {
     const timer = setInterval(next, 6000);
@@ -38,7 +59,7 @@ const HeroSection = () => {
         >
           <img
             src={slides[current].image}
-            alt={t("hero.title2")}
+            alt={heroData?.title2 || t("hero.title2")}
             className="w-full h-full object-cover"
             loading={current === 0 ? "eager" : "lazy"}
           />
@@ -60,28 +81,28 @@ const HeroSection = () => {
             transition={{ delay: 0.2 }}
             className="inline-block text-sm font-medium tracking-widest uppercase text-primary-foreground/80 mb-4"
           >
-            {t("hero.badge")}
+            {heroData?.badge || t("hero.badge")}
           </motion.span>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold text-primary-foreground leading-tight mb-6">
-            {t("hero.title1")}
+            {heroData?.title1 || t("hero.title1")}
             <br />
-            <span className="italic">{t("hero.title2")}</span>
+            <span className="italic">{heroData?.title2 || t("hero.title2")}</span>
           </h1>
           <p className="text-lg sm:text-xl text-primary-foreground/80 font-body mb-8 max-w-lg">
-            {t("hero.subtitle")}
+            {heroData?.subtitle || t("hero.subtitle")}
           </p>
           <div className="flex flex-wrap gap-4">
             <a
               href="/#shop"
               className="inline-flex items-center gap-2 bg-primary-foreground text-primary px-8 py-4 rounded-lg font-body font-semibold text-sm hover:opacity-90 transition-opacity"
             >
-              {t("hero.cta")} <ArrowRight className="w-4 h-4" />
+              {heroData?.cta1 || t("hero.cta")} <ArrowRight className="w-4 h-4" />
             </a>
             <a
               href="/#categories"
               className="inline-flex items-center gap-2 border border-primary-foreground/30 text-primary-foreground px-8 py-4 rounded-lg font-body font-semibold text-sm hover:bg-primary-foreground/10 transition-colors"
             >
-              {t("hero.cta2")}
+              {heroData?.cta2 || t("hero.cta2")}
             </a>
           </div>
         </motion.div>

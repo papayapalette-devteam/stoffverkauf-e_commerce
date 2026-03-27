@@ -90,7 +90,7 @@ exports.getCategories = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.status(200).json({
-      data,
+      categories: data,
       pagination: {
         total,
         page,

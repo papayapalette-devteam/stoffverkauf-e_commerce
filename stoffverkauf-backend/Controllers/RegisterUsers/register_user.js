@@ -176,11 +176,72 @@ const getAllCustomers = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
-      success: false,
-      error: "server_error",
-    });
+    return res.status(500).json({ success: false, error: "server_error" });
   }
 };
 
-module.exports = { signup, login, updateUser, getAllCustomers };
+const getAllAdmins = async (req, res) => {
+  try {
+    const admins = await User.find({ role: 'admin' }).select("-password").sort({ createdAt: -1 });
+    return res.status(200).json({
+      success: true,
+      admins
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: "server_error" });
+  }
+};
+
+const createAdmin = async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: "email_exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newAdmin = new User({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+      role: 'admin',
+      agreed: true
+    });
+
+    await newAdmin.save();
+    return res.status(201).json({
+      success: true,
+      message: "Admin created successfully",
+      admin: {
+        _id: newAdmin._id,
+        firstName,
+        lastName,
+        email,
+        role: 'admin'
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: "server_error" });
+  }
+};
+
+const deleteAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await User.findByIdAndDelete(id);
+    return res.status(200).json({
+      success: true,
+      message: "Admin removed successfully"
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: "server_error" });
+  }
+};
+
+module.exports = { signup, login, updateUser, getAllCustomers, getAllAdmins, createAdmin, deleteAdmin };

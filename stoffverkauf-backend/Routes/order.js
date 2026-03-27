@@ -19,12 +19,16 @@ router.patch('/admin/:id/view', authMiddleware, adminMiddleware, orderController
 router.patch('/admin/:id', authMiddleware, adminMiddleware, orderController.updateOrderStatus);
 
 // ==========================================
+// DOCUMENT ROUTES (Downloads)
+// ==========================================
+router.get('/document/:id/invoice', invoiceController.generateInvoice);
+router.get('/document/:id/packingslip', packingSlipController.generatePackingSlip);
+
+// ==========================================
 // PUBLIC / USER ROUTES
 // ==========================================
 router.post('/', orderController.createOrder); // Guest checkout supported
 router.get('/my/:userId', authMiddleware, orderController.getMyOrders);
-router.get('/:id/invoice', invoiceController.generateInvoice);
-router.get('/:id/packingslip', packingSlipController.generatePackingSlip);
 
 // PayPal Integration
 router.post('/paypal/create', paypalController.createPaypalOrder);

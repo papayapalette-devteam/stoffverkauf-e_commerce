@@ -23,28 +23,19 @@ const AdminIntegrations = () => {
 
   const [ga4Id, setGa4Id] = useState("");
   const [fbPixelId, setFbPixelId] = useState("");
-  const [shopifyDomain, setShopifyDomain] = useState("");
-  const [shopifyToken, setShopifyToken] = useState("");
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
 
-  const [stripeKey, setStripeKey] = useState("");
-  const [stripeSecret, setStripeSecret] = useState("");
-  const [stripeMode, setStripeMode] = useState<"test" | "live">("test");
   const [paypalUsername, setPaypalUsername] = useState("");
   const [paypalPassword, setPaypalPassword] = useState("");
   const [paypalSignature, setPaypalSignature] = useState("");
   const [paypalMode, setPaypalMode] = useState<"sandbox" | "live">("sandbox");
-  const [klarnaUser, setKlarnaUser] = useState("");
-  const [klarnaPass, setKlarnaPass] = useState("");
-  const [klarnaMode, setKlarnaMode] = useState<"playground" | "production">("playground");
+  const [paypalClientId, setPaypalClientId] = useState("");
 
-  const [dhlApiKey, setDhlApiKey] = useState("");
-  const [dhlSecret, setDhlSecret] = useState("");
-  const [dhlAccountNumber, setDhlAccountNumber] = useState("");
-  const [dpdToken, setDpdToken] = useState("");
-  const [dpdDepotNumber, setDpdDepotNumber] = useState("");
-  const [hermesApiKey, setHermesApiKey] = useState("");
-  const [hermesPartnerId, setHermesPartnerId] = useState("");
+  const [sendcloudKey, setSendcloudKey] = useState("");
+  const [sendcloudSecret, setSendcloudSecret] = useState("");
+
+  const [headCode, setHeadCode] = useState("");
+  const [bodyCode, setBodyCode] = useState("");
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -57,21 +48,28 @@ const AdminIntegrations = () => {
           const integrations = res.data.integrations;
           integrations.forEach((integ: any) => {
             switch(integ.key) {
-              case 'ga4': setGa4Id(integ.data.ga4Id); break;
-              case 'fbpixel': setFbPixelId(integ.data.fbPixelId); break;
-              case 'shopify': setShopifyDomain(integ.data.shopifyDomain); setShopifyToken(integ.data.shopifyToken); break;
-              case 'stripe': setStripeKey(integ.data.stripeKey); setStripeSecret(integ.data.stripeSecret); setStripeMode(integ.data.stripeMode); break;
-              case 'paypal': setPaypalUsername(integ.data.paypalUsername); setPaypalPassword(integ.data.paypalPassword); setPaypalSignature(integ.data.paypalSignature); setPaypalMode(integ.data.paypalMode); break;
-              case 'klarna': setKlarnaUser(integ.data.klarnaUser); setKlarnaPass(integ.data.klarnaPass); setKlarnaMode(integ.data.klarnaMode); break;
-              case 'dhl': setDhlApiKey(integ.data.dhlApiKey); setDhlSecret(integ.data.dhlSecret); setDhlAccountNumber(integ.data.dhlAccountNumber); break;
-              case 'dpd': setDpdToken(integ.data.dpdToken); setDpdDepotNumber(integ.data.dpdDepotNumber); break;
-              case 'hermes': setHermesApiKey(integ.data.hermesApiKey); setHermesPartnerId(integ.data.hermesPartnerId); break;
+              case 'ga4': setGa4Id(integ.data.ga4Id || ""); break;
+              case 'fbpixel': setFbPixelId(integ.data.fbPixelId || ""); break;
+              case 'paypal': 
+                setPaypalUsername(integ.data.paypalUsername || ""); 
+                setPaypalPassword(integ.data.paypalPassword || ""); 
+                setPaypalSignature(integ.data.paypalSignature || ""); 
+                setPaypalMode(integ.data.paypalMode || "sandbox");
+                setPaypalClientId(integ.data.paypalClientId || "");
+                break;
+              case 'sendcloud': 
+                setSendcloudKey(integ.data.sendcloudKey || ""); 
+                setSendcloudSecret(integ.data.sendcloudSecret || ""); 
+                break;
+              case 'custom_code':
+                setHeadCode(integ.data.headCode || "");
+                setBodyCode(integ.data.bodyCode || "");
+                break;
             }
           });
         }
       } catch (err) {
         console.error("Fetch integrations error:", err);
-        toast.error("Failed to load integrations");
       } finally {
         setIsLoading(false);
       }
@@ -118,49 +116,13 @@ const AdminIntegrations = () => {
 
   const paymentIntegrations: Integration[] = [
     {
-      id: "stripe",
-      name: "Stripe",
-      icon: CreditCard,
-      desc: de ? "Kreditkarten, SEPA-Lastschrift, Apple Pay, Google Pay" : "Credit cards, SEPA direct debit, Apple Pay, Google Pay",
-      status: stripeKey ? "connected" : "disconnected",
-      onSave: () => saveIntegration("stripe", "Stripe", { stripeKey, stripeSecret, stripeMode }),
-      onDisconnect: () => disconnectIntegration("stripe", "Stripe", [setStripeKey, setStripeSecret]),
-      fields: (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <label className="text-sm font-medium text-foreground">{de ? "Modus" : "Mode"}</label>
-            <select value={stripeMode} onChange={(e) => setStripeMode(e.target.value as "test" | "live")} className={selectClass}>
-              <option value="test">{de ? "Testmodus" : "Test Mode"}</option>
-              <option value="live">{de ? "Live-Modus" : "Live Mode"}</option>
-            </select>
-            {stripeMode === "test" && <span className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-medium">{de ? "Testmodus aktiv" : "Test mode active"}</span>}
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">Publishable Key</label>
-            <input value={stripeKey} onChange={(e) => setStripeKey(e.target.value)} placeholder="pk_test_xxxxx" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">Secret Key</label>
-            <input value={stripeSecret} onChange={(e) => setStripeSecret(e.target.value)} type="password" placeholder="sk_test_xxxxx" className={inputClass} />
-          </div>
-          <div className="bg-secondary/50 rounded-lg p-3 border border-border">
-            <p className="text-xs text-muted-foreground">{de ? "Unterstützte Zahlungsmethoden: Kreditkarten (Visa, Mastercard, Amex), SEPA-Lastschrift, Giropay, Apple Pay, Google Pay, Klarna via Stripe." : "Supported: Credit cards (Visa, Mastercard, Amex), SEPA, Giropay, Apple Pay, Google Pay, Klarna via Stripe."}</p>
-          </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" />
-            <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener" className="underline">{de ? "Stripe Dashboard öffnen" : "Open Stripe Dashboard"}</a>
-          </p>
-        </div>
-      ),
-    },
-    {
       id: "paypal",
-      name: "PayPal (Classic API)",
+      name: "PayPal",
       icon: Euro,
-      desc: de ? "PayPal-Zahlungen via Classic API (NVP/SOAP)" : "PayPal payments via Classic API (NVP/SOAP)",
-      status: paypalUsername ? "connected" : "disconnected",
-      onSave: () => saveIntegration("paypal", "PayPal", { paypalUsername, paypalPassword, paypalSignature, paypalMode }),
-      onDisconnect: () => disconnectIntegration("paypal", "PayPal", [setPaypalUsername, setPaypalPassword, setPaypalSignature]),
+      desc: de ? "PayPal-Zahlungen via REST API (Empfohlen)" : "PayPal payments via REST API (Recommended)",
+      status: paypalClientId ? "connected" : "disconnected",
+      onSave: () => saveIntegration("paypal", "PayPal", { paypalClientId, paypalUsername, paypalPassword, paypalSignature, paypalMode }),
+      onDisconnect: () => disconnectIntegration("paypal", "PayPal", [setPaypalClientId, setPaypalUsername, setPaypalPassword]),
       fields: (
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-2">
@@ -171,50 +133,10 @@ const AdminIntegrations = () => {
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1">API Username</label>
-            <input value={paypalUsername} onChange={(e) => setPaypalUsername(e.target.value)} placeholder="name_api1.example.com" className={inputClass} />
+            <label className="text-sm font-medium text-foreground block mb-1">Client ID</label>
+            <input value={paypalClientId} onChange={(e) => setPaypalClientId(e.target.value)} placeholder="Ac-XXXX..." className={inputClass} />
           </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">API Password</label>
-            <input value={paypalPassword} onChange={(e) => setPaypalPassword(e.target.value)} type="password" placeholder="M6BG6FZR9CMHREV4" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">Signature</label>
-            <input value={paypalSignature} onChange={(e) => setPaypalSignature(e.target.value)} type="password" placeholder="AiPC9Bjk..." className={inputClass} />
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: "klarna",
-      name: "Klarna",
-      icon: Shield,
-      desc: de ? "Sofortüberweisung, Rechnung, Ratenkauf" : "Instant transfer, invoice, installments",
-      status: klarnaUser ? "connected" : "disconnected",
-      onSave: () => saveIntegration("klarna", "Klarna", { klarnaUser, klarnaPass, klarnaMode }),
-      onDisconnect: () => disconnectIntegration("klarna", "Klarna", [setKlarnaUser, setKlarnaPass]),
-      fields: (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <label className="text-sm font-medium text-foreground">{de ? "Umgebung" : "Environment"}</label>
-            <select value={klarnaMode} onChange={(e) => setKlarnaMode(e.target.value as "playground" | "production")} className={selectClass}>
-              <option value="playground">Playground</option>
-              <option value="production">Production</option>
-            </select>
-            {klarnaMode === "playground" && <span className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-medium">Playground</span>}
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">API Username (UID)</label>
-            <input value={klarnaUser} onChange={(e) => setKlarnaUser(e.target.value)} placeholder="K123456_abcdefg" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">API Password</label>
-            <input value={klarnaPass} onChange={(e) => setKlarnaPass(e.target.value)} type="password" placeholder="•••••••••" className={inputClass} />
-          </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" />
-            <a href="https://portal.klarna.com/" target="_blank" rel="noopener" className="underline">{de ? "Klarna Merchant Portal öffnen" : "Open Klarna Merchant Portal"}</a>
-          </p>
+          <p className="text-xs text-muted-foreground">{de ? "Für modernere Integrationen verwenden Sie bitte Ihre PayPal Client ID." : "For modern integrations, please use your PayPal Client ID."}</p>
         </div>
       ),
     },
@@ -222,80 +144,26 @@ const AdminIntegrations = () => {
 
   const shippingIntegrations: Integration[] = [
     {
-      id: "dhl",
-      name: "DHL",
+      id: "sendcloud",
+      name: "Sendcloud",
       icon: Truck,
-      desc: de ? "Versandetiketten & Sendungsverfolgung" : "Shipping labels & tracking",
-      status: dhlApiKey ? "connected" : "disconnected",
-      onSave: () => saveIntegration("dhl", "DHL", { dhlApiKey, dhlSecret, dhlAccountNumber }),
-      onDisconnect: () => disconnectIntegration("dhl", "DHL", [setDhlApiKey, setDhlSecret, setDhlAccountNumber]),
+      desc: de ? "Anbindung an über 80 Versanddienstleister weltweit" : "Connect with 80+ shipping carriers worldwide",
+      status: sendcloudKey ? "connected" : "disconnected",
+      onSave: () => saveIntegration("sendcloud", "Sendcloud", { sendcloudKey, sendcloudSecret }),
+      onDisconnect: () => disconnectIntegration("sendcloud", "Sendcloud", [setSendcloudKey, setSendcloudSecret]),
       fields: (
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1">API Key (App ID)</label>
-            <input value={dhlApiKey} onChange={(e) => setDhlApiKey(e.target.value)} placeholder="dhl_api_xxxxx" className={inputClass} />
+            <label className="text-sm font-medium text-foreground block mb-1">Public Key</label>
+            <input value={sendcloudKey} onChange={(e) => setSendcloudKey(e.target.value)} placeholder="sc_pub_xxxxx" className={inputClass} />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground block mb-1">API Secret</label>
-            <input value={dhlSecret} onChange={(e) => setDhlSecret(e.target.value)} type="password" placeholder="•••••••••" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">{de ? "Geschäftskundennummer (EKP)" : "Business Customer Number (EKP)"}</label>
-            <input value={dhlAccountNumber} onChange={(e) => setDhlAccountNumber(e.target.value)} placeholder="1234567890" className={inputClass} />
+            <label className="text-sm font-medium text-foreground block mb-1">Secret Key</label>
+            <input value={sendcloudSecret} onChange={(e) => setSendcloudSecret(e.target.value)} type="password" placeholder="•••••••••" className={inputClass} />
           </div>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <ExternalLink className="w-3 h-3" />
-            <a href="https://entwickler.dhl.de/" target="_blank" rel="noopener" className="underline">{de ? "DHL Entwicklerportal öffnen" : "Open DHL Developer Portal"}</a>
-          </p>
-        </div>
-      ),
-    },
-    {
-      id: "dpd",
-      name: "DPD",
-      icon: Package,
-      desc: de ? "Paketversand mit Predict-Service" : "Parcel shipping with Predict service",
-      status: dpdToken ? "connected" : "disconnected",
-      onSave: () => saveIntegration("dpd", "DPD", { dpdToken, dpdDepotNumber }),
-      onDisconnect: () => disconnectIntegration("dpd", "DPD", [setDpdToken]),
-      fields: (
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">API Token</label>
-            <input value={dpdToken} onChange={(e) => setDpdToken(e.target.value)} type="password" placeholder="dpd_token_xxxxx" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">{de ? "Depotnummer" : "Depot Number"}</label>
-            <input value={dpdDepotNumber} onChange={(e) => setDpdDepotNumber(e.target.value)} placeholder="0198" className={inputClass} />
-          </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" />
-            <a href="https://esolutions.dpd.com/" target="_blank" rel="noopener" className="underline">{de ? "DPD eSolutions öffnen" : "Open DPD eSolutions"}</a>
-          </p>
-        </div>
-      ),
-    },
-    {
-      id: "hermes",
-      name: "Hermes",
-      icon: Truck,
-      desc: de ? "Hermes Versand mit Paketshop-Netzwerk" : "Hermes shipping with parcel shop network",
-      status: hermesApiKey ? "connected" : "disconnected",
-      onSave: () => saveIntegration("hermes", "Hermes", { hermesApiKey, hermesPartnerId }),
-      onDisconnect: () => disconnectIntegration("hermes", "Hermes", [setHermesApiKey]),
-      fields: (
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">API Key</label>
-            <input value={hermesApiKey} onChange={(e) => setHermesApiKey(e.target.value)} type="password" placeholder="hermes_api_xxxxx" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">Partner ID</label>
-            <input value={hermesPartnerId} onChange={(e) => setHermesPartnerId(e.target.value)} placeholder="HER-xxxxx" className={inputClass} />
-          </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" />
-            <a href="https://www.myhermes.de/business/" target="_blank" rel="noopener" className="underline">{de ? "Hermes Business öffnen" : "Open Hermes Business"}</a>
+            <a href="https://panel.sendcloud.sc/" target="_blank" rel="noopener" className="underline">{de ? "Sendcloud Panel öffnen" : "Open Sendcloud Panel"}</a>
           </p>
         </div>
       ),
@@ -303,28 +171,6 @@ const AdminIntegrations = () => {
   ];
 
   const marketingIntegrations: Integration[] = [
-    {
-      id: "shopify",
-      name: "Shopify",
-      icon: ShoppingCart,
-      desc: de ? "E-Commerce & Zahlungsabwicklung über Shopify" : "E-commerce & payment processing via Shopify",
-      status: shopifyDomain ? "connected" : "disconnected",
-      onSave: () => saveIntegration("shopify", "Shopify", { shopifyDomain, shopifyToken }),
-      onDisconnect: () => disconnectIntegration("shopify", "Shopify", [setShopifyDomain, setShopifyToken]),
-      fields: (
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">{de ? "Shopify-Domain" : "Shopify Domain"}</label>
-            <input value={shopifyDomain} onChange={(e) => setShopifyDomain(e.target.value)} placeholder="your-store.myshopify.com" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">Storefront Access Token</label>
-            <input value={shopifyToken} onChange={(e) => setShopifyToken(e.target.value)} type="password" placeholder="shpat_xxxxx" className={inputClass} />
-          </div>
-          <p className="text-xs text-muted-foreground">{de ? "Erstellen Sie einen Storefront Access Token in Ihrem Shopify Admin unter Apps > Entwicklung." : "Create a Storefront Access Token in your Shopify Admin under Apps > Development."}</p>
-        </div>
-      ),
-    },
     {
       id: "ga4",
       name: "Google Analytics 4",
@@ -346,10 +192,6 @@ const AdminIntegrations = () => {
               {copiedSnippet === "ga4" ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" />
-            <a href="https://analytics.google.com" target="_blank" rel="noopener" className="underline">{de ? "Google Analytics öffnen" : "Open Google Analytics"}</a>
-          </p>
         </div>
       ),
     },
@@ -357,7 +199,7 @@ const AdminIntegrations = () => {
       id: "fbpixel",
       name: "Facebook Pixel",
       icon: Facebook,
-      desc: de ? "Facebook/Meta Werbe-Tracking und Conversion-Optimierung" : "Facebook/Meta ad tracking and conversion optimization",
+      desc: de ? "Facebook/Meta Werbe-Tracking" : "Facebook/Meta ad tracking",
       status: fbPixelId ? "connected" : "disconnected",
       onSave: () => saveIntegration("fbpixel", "Facebook Pixel", { fbPixelId }),
       onDisconnect: () => disconnectIntegration("fbpixel", "Facebook Pixel", [setFbPixelId]),
@@ -374,10 +216,6 @@ const AdminIntegrations = () => {
               {copiedSnippet === "fb" ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" />
-            <a href="https://business.facebook.com/events_manager" target="_blank" rel="noopener" className="underline">{de ? "Facebook Events Manager öffnen" : "Open Facebook Events Manager"}</a>
-          </p>
         </div>
       ),
     },
@@ -467,14 +305,29 @@ const AdminIntegrations = () => {
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground block mb-1">{"<head>"} Code</label>
-            <textarea rows={4} placeholder={de ? "Code für den <head>-Bereich eingeben..." : "Enter code for <head> section..."} className="w-full px-4 py-3 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-accent resize-none" />
+            <textarea 
+              value={headCode}
+              onChange={(e) => setHeadCode(e.target.value)}
+              rows={4} 
+              placeholder={de ? "Code für den <head>-Bereich eingeben..." : "Enter code for <head> section..."} 
+              className="w-full px-4 py-3 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-accent resize-none" 
+            />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground block mb-1">{"<body>"} Code</label>
-            <textarea rows={4} placeholder={de ? "Code für den <body>-Bereich eingeben..." : "Enter code for <body> section..."} className="w-full px-4 py-3 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-accent resize-none" />
+            <textarea 
+              value={bodyCode}
+              onChange={(e) => setBodyCode(e.target.value)}
+              rows={4} 
+              placeholder={de ? "Code für den <body>-Bereich eingeben..." : "Enter code for <body> section..."} 
+              className="w-full px-4 py-3 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border text-xs font-mono focus:outline-none focus:ring-2 focus:ring-accent resize-none" 
+            />
           </div>
-          <button onClick={() => toast.success(de ? "Code gespeichert" : "Code saved")} className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-            {de ? "Speichern" : "Save"}
+          <button 
+            onClick={() => saveIntegration("custom_code", "Custom Code", { headCode, bodyCode })}
+            className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            {de ? "Speichere Code" : "Save Code"}
           </button>
         </div>
       </div>

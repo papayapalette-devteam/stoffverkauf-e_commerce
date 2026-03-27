@@ -102,8 +102,8 @@ const AdminMarketing = () => {
       const resp = await api.get("/api/coupon/get-coupons", {
         params: { page, limit }
       });
-      // The backend now returns { data, pagination: { total, page, pages } }
-      setCoupons(resp.data.data);
+      // The backend now returns { coupons, pagination: { total, page, pages } }
+      setCoupons(resp.data.coupons);
       if (resp.data.pagination) {
         setTotalPages(resp.data.pagination.pages);
         setTotalCoupons(resp.data.pagination.total);

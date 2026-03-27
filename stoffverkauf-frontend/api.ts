@@ -1,14 +1,14 @@
 import axios from "axios";
 
 const api = axios.create({
-  // baseURL: "http://localhost:5000/",
-  baseURL: "https://stoffverkauf-e-commerce-1.onrender.com/"
+  // baseURL: "http://localhost:5000",
+  baseURL: "https://stoffverkauf-e-commerce-1.onrender.com"
 });
 
 api.interceptors.request.use((config) => {
   // Check standard token first (Admin or simple login)
   let token = localStorage.getItem("token");
-  
+
   // If not found, check the user storage key
   if (!token) {
     const authData = localStorage.getItem("weber_auth");

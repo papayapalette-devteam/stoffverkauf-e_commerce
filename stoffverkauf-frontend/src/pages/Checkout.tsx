@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, CreditCard, Truck, CheckCircle2, ShieldCheck, MapPin, Loader2, Download, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -21,7 +21,7 @@ const steps = [
 const Checkout = () => {
   const { lang } = useI18n();
   const de = lang === "de";
-  const { items, total, clearCart } = useCart();
+  const { items, total: subtotal, clearCart } = useCart();
   const { user } = useAuth();
   
   const [step, setStep] = useState(0);
@@ -30,6 +30,12 @@ const Checkout = () => {
   const [orderId, setOrderId] = useState("");
   const [paypalOptions, setPaypalOptions] = useState<any>(null);
   const [isPaypalConfigLoading, setIsPaypalConfigLoading] = useState(true);
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: user?.firstName || "",
@@ -42,30 +48,30 @@ const Checkout = () => {
     paymentMethod: "paypal"
   });
 
+  const shipping = useMemo(() => {
+    return subtotal >= 100 ? 0 : 5.90;
+  }, [subtotal]);
+
+  const grandTotal = useMemo(() => {
+    const total = subtotal + shipping - discount;
+    return Math.max(0, parseFloat(total.toFixed(2)));
+  }, [subtotal, shipping, discount]);
+
   useEffect(() => {
     const fetchPaypalConfig = async () => {
       try {
         const res = await api.get('/api/integration/paypal');
         if (res.data.success && res.data.integration.isActive) {
-          // Check if Client ID exists. If not, use 'sb' for sandbox as a fallback to at least show the buttons.
           const clientId = res.data.integration.data.paypalClientId || 'sb';
           setPaypalOptions({
             "client-id": clientId,
             currency: "EUR",
             intent: "capture"
           });
-          console.log("PayPal Config loaded:", clientId);
         } else {
-            // Fallback for demo if no integration is active
-            setPaypalOptions({
-                "client-id": 'sb',
-                currency: "EUR",
-                intent: "capture"
-              });
+            setPaypalOptions({ "client-id": 'sb', currency: "EUR", intent: "capture" });
         }
       } catch (err) {
-        console.error("PayPal config error:", err);
-        // Ensure we still have basic buttons for testing
         setPaypalOptions({ "client-id": "sb", currency: "EUR" });
       } finally {
         setIsPaypalConfigLoading(false);
@@ -74,8 +80,27 @@ const Checkout = () => {
     fetchPaypalConfig();
   }, []);
 
-  const shipping = total >= 100 ? 0 : 5.90;
-  const grandTotal = total + shipping;
+  const applyCoupon = async () => {
+    if (!couponCode) return;
+    setIsApplyingCoupon(true);
+    try {
+      const res = await api.post("/api/coupon/validate-coupon", { 
+        code: couponCode, 
+        total: subtotal 
+      });
+      if (res.data.success) {
+        setDiscount(Number(res.data.discount));
+        setAppliedCoupon(res.data.coupon);
+        toast.success(de ? "Gutschein angewendet!" : "Coupon applied successfully!");
+      } else {
+        toast.error(res.data.message);
+      }
+    } catch (err) {
+      toast.error("Failed to apply coupon");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
 
   const validateFields = () => {
     if (step === 0) {
@@ -104,6 +129,8 @@ const Checkout = () => {
           price: item.price
         })),
         total: grandTotal,
+        discount: discount,
+        appliedCoupon: appliedCoupon?.code || "",
         paymentMethod: formData.paymentMethod,
         shippingAddress: {
           firstName: formData.firstName,
@@ -337,6 +364,7 @@ const Checkout = () => {
                     ) : paypalOptions ? (
                         <PayPalScriptProvider options={paypalOptions}>
                         <PayPalButtons 
+                            key={grandTotal}
                             style={{ layout: "horizontal", height: 50, color: 'gold', shape: 'rect' }}
                             createOrder={async () => {
                             const order = await handleCreateOrder();
@@ -379,8 +407,16 @@ const Checkout = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{de ? "Zwischensumme" : "Subtotal"}</span>
-                    <span className="font-bold text-foreground">{total.toFixed(2)} €</span>
+                    <span className="font-bold text-foreground">{subtotal.toFixed(2)} €</span>
                   </div>
+                  
+                  {discount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600 font-bold">
+                        <span>{de ? `Rabatt (${appliedCoupon?.code})` : `Discount (${appliedCoupon?.code})`}</span>
+                        <span>-{discount.toFixed(2)} €</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{de ? "Versandkosten" : "Shipping"}</span>
                     <span className="font-bold text-foreground">{shipping === 0 ? "0,00 €" : `${shipping.toFixed(2)} €`}</span>
@@ -391,6 +427,35 @@ const Checkout = () => {
                     <span className="font-display text-2xl font-black text-accent">{grandTotal.toFixed(2)} €</span>
                   </div>
                 </div>
+
+                {/* Coupon Input */}
+                {!appliedCoupon ? (
+                  <div className="pt-6 border-t border-border">
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder={de ? "Gutscheincode" : "Coupon Code"}
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        className="flex-1 px-4 py-2 bg-secondary/50 rounded-xl border border-border text-xs focus:ring-1 focus:ring-accent outline-none"
+                      />
+                      <button 
+                        onClick={applyCoupon}
+                        disabled={isApplyingCoupon || !couponCode}
+                        className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-xs font-bold hover:bg-primary/90 disabled:opacity-50 transition-all"
+                      >
+                        {isApplyingCoupon ? <Loader2 className="w-3 h-3 animate-spin" /> : (de ? "Anwenden" : "Apply")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-4 flex items-center justify-between text-[10px] font-bold text-green-600 bg-green-500/5 p-3 rounded-lg border border-green-500/20">
+                     <span>{de ? "Gutschein angewendet!" : "Coupon Applied!"}</span>
+                     <button onClick={() => { setDiscount(0); setAppliedCoupon(null); setCouponCode(""); }} className="text-muted-foreground hover:text-destructive underline font-medium">
+                        {de ? "Entfernen" : "Remove"}
+                     </button>
+                  </div>
+                )}
                 
                 <div className="space-y-3 pt-6">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

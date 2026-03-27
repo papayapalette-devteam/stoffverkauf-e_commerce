@@ -34,7 +34,9 @@ console.log(totalOrdersStatusCount);
     setIsLoading(true);
     try {
       const res = await api.get(`/api/order/admin/all?page=${currentPage}&limit=10&search=${search}&status=${statusFilter}`);
-      if (res.data.success) {
+      console.log(res);
+      
+      if (res.data) {
         setOrders(res.data.orders);
         setTotalPages(res.data.totalPages);
         setTotalOrders(res.data.totalOrders);
@@ -74,11 +76,11 @@ console.log(totalOrdersStatusCount);
   };
 
   const handleDownloadInvoice = (orderId: string) => {
-    window.open(`${api.defaults.baseURL}/api/order/${orderId}/invoice`, '_blank');
+    window.open(`${api.defaults.baseURL}/api/order/document/${orderId}/invoice`, '_blank');
   };
 
   const handleDownloadPackingSlip = (orderId: string) => {
-    window.open(`${api.defaults.baseURL}/api/order/${orderId}/packingslip`, '_blank');
+    window.open(`${api.defaults.baseURL}/api/order/document/${orderId}/packingslip`, '_blank');
   };
 
   const handleRefund = async () => {
@@ -244,6 +246,9 @@ console.log(totalOrdersStatusCount);
             <div><p className="text-muted-foreground">Status</p><p className="font-semibold text-foreground capitalize">{selected.status}</p></div>
             <div><p className="text-muted-foreground">{de ? "Artikel" : "Items"}</p><p className="font-semibold text-foreground">{selected.items.length}</p></div>
             <div><p className="text-muted-foreground">{de ? "Gesamt" : "Total"}</p><p className="font-semibold text-foreground">{selected.total.toFixed(2)} €</p></div>
+            {selected.discount > 0 && (
+              <div><p className="text-muted-foreground">{de ? "Rabatt" : "Discount"}</p><p className="font-semibold text-green-600">-{selected.discount.toFixed(2)} €</p></div>
+            )}
           </div>
 
           {selected.trackingNumber && (
@@ -411,7 +416,7 @@ console.log(totalOrdersStatusCount);
                           <Eye className="w-4 h-4 text-accent" />
                         </button>
                         <button 
-                          onClick={() => window.open(`${api.defaults.baseURL}/api/order/${order._id}/invoice`, '_blank')} 
+                          onClick={() => window.open(`${api.defaults.baseURL}/api/order/document/${order._id}/invoice`, '_blank')} 
                           className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Rechnung" : "Invoice"}
                         >
                           <Download className="w-4 h-4 text-muted-foreground" />

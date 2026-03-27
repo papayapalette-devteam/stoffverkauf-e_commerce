@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Store, Globe, Palette, Mail, Truck, Shield, Bell, Users, Receipt, CreditCard, Plus, Trash2 } from "lucide-react";
+import { Store, Globe, Palette, Mail, Shield, Bell, Users, Receipt, CreditCard, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import api from "../../../api";
 
 interface UserRole {
   id: string;
@@ -11,23 +12,96 @@ interface UserRole {
   active: boolean;
 }
 
-const mockUsers: UserRole[] = [
-  { id: "1", name: "Admin Weber", email: "info@stoffverkauf-weber.de", role: "admin", active: true },
-  { id: "2", name: "Max Mustermann", email: "max@stoffverkauf-weber.de", role: "editor", active: true },
-  { id: "3", name: "Erika Muster", email: "erika@stoffverkauf-weber.de", role: "viewer", active: false },
-];
-
 const AdminSettings = () => {
   const { lang } = useI18n();
   const de = lang === "de";
-  const [activeTab, setActiveTab] = useState<"general" | "shipping" | "appearance" | "email" | "security" | "tax" | "roles">("general");
-  const [users, setUsers] = useState(mockUsers);
+  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "email" | "security" | "tax" | "roles">("general");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  const [settings, setSettings] = useState<any>({
+    general: { storeName: "", email: "", phone: "", currency: "EUR (€)", language: "de", address: "", vatNumber: "" },
+    tax: { standardRate: 19, reducedRate: 7, showIncVat: true, showVatNotice: true, taxNumber: "", taxOffice: "" },
+    appearance: { primaryColor: "#3E005E", accentColor: "#5600B2", displayFont: "Playfair Display", bodyFont: "DM Sans", darkMode: false },
+    email: { orderConfirmations: true, shippingNotifications: true, reviewRequests: false, newsletterWelcome: true, abandonedCartReminder: false, senderEmail: "", abandonedCartDelay: 2 },
+    security: { forceSsl: true, showCookieBanner: true, maintenanceMode: false, twoFactorAuth: false }
+  });
+
+  const [users, setUsers] = useState<any[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "viewer" as UserRole["role"] });
+  const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", password: "" });
+
+  useEffect(() => {
+    fetchSettings();
+    fetchAdmins();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/api/settings");
+      if (res.data) {
+        setSettings((prev: any) => ({
+          ...prev,
+          ...res.data,
+          general: { ...prev.general, ...res.data.general },
+          tax: { ...prev.tax, ...res.data.tax },
+          appearance: { ...prev.appearance, ...res.data.appearance },
+          email: { ...prev.email, ...res.data.email },
+          security: { ...prev.security, ...res.data.security }
+        }));
+      }
+    } catch (err) {
+      toast.error("Failed to load settings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAdmins = async () => {
+    try {
+      const res = await api.get("/api/user/admins");
+      if (res.data.success) {
+        setUsers(res.data.admins);
+      }
+    } catch (err) {
+      console.error("Failed to fetch admins", err);
+    }
+  };
+
+  const addUser = async () => {
+    if (!newUser.firstName || !newUser.lastName || !newUser.email || !newUser.password) {
+      toast.error(de ? "Bitte füllen Sie alle Felder aus" : "Please fill in all fields");
+      return;
+    }
+    try {
+      const res = await api.post("/api/user/admins", newUser);
+      if (res.data.success) {
+        toast.success(de ? "Admin hinzugefügt" : "Admin added");
+        setShowAddUser(false);
+        setNewUser({ firstName: "", lastName: "", email: "", password: "" });
+        fetchAdmins();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error === "email_exists" 
+        ? (de ? "E-Mail bereits vergeben" : "Email already exists")
+        : "Failed to add admin");
+    }
+  };
+
+  const deleteUser = async (id: string) => {
+    if (!confirm(de ? "Benutzer wirklich löschen?" : "Are you sure you want to delete this user?")) return;
+    try {
+      await api.delete(`/api/user/admins/${id}`);
+      toast.success(de ? "Benutzer gelöscht" : "User deleted");
+      fetchAdmins();
+    } catch (err) {
+      toast.error("Failed to delete user");
+    }
+  };
 
   const tabs = [
     { id: "general" as const, label: de ? "Allgemein" : "General", icon: Store },
-    { id: "shipping" as const, label: de ? "Versand" : "Shipping", icon: Truck },
     { id: "tax" as const, label: de ? "Steuer" : "Tax", icon: Receipt },
     { id: "appearance" as const, label: de ? "Erscheinungsbild" : "Appearance", icon: Palette },
     { id: "email" as const, label: "E-Mail", icon: Mail },
@@ -35,33 +109,62 @@ const AdminSettings = () => {
     { id: "security" as const, label: de ? "Sicherheit" : "Security", icon: Shield },
   ];
 
-  const save = () => toast.success(de ? "Einstellungen gespeichert" : "Settings saved");
+  const handleUpdate = (category: string, field: string, value: any) => {
+    setSettings((prev: any) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [field]: value
+      }
+    }));
+  };
+
+  const save = async () => {
+    try {
+      setSaving(true);
+      await api.put("/api/settings", settings);
+      toast.success(de ? "Einstellungen gespeichert" : "Settings saved");
+    } catch (err) {
+      toast.error("Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const inputClass = "w-full px-4 py-2.5 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent";
 
-  const handleAddUser = () => {
-    if (!newUser.name || !newUser.email) { toast.error(de ? "Name und E-Mail erforderlich" : "Name and email required"); return; }
-    setUsers([...users, { id: Date.now().toString(), ...newUser, active: true }]);
-    toast.success(de ? `${newUser.name} hinzugefügt` : `${newUser.name} added`);
-    setShowAddUser(false);
-    setNewUser({ name: "", email: "", role: "viewer" });
-  };
+  if (loading) {
+     return <div className="flex items-center justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>;
+  }
 
-  const toggleUser = (id: string) => setUsers(users.map(u => u.id === id ? { ...u, active: !u.active } : u));
-  const removeUser = (id: string, name: string) => {
-    setUsers(users.filter(u => u.id !== id));
-    toast.success(de ? `${name} entfernt` : `${name} removed`);
-  };
+  const SaveButton = () => (
+    <div className="pt-6 mt-6 border-t border-border flex justify-end">
+      <button 
+        onClick={save} 
+        disabled={saving}
+        className="bg-primary text-primary-foreground px-8 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+      >
+        {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+        {de ? "Änderungen speichern" : "Save Changes"}
+      </button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <h2 className="font-display text-2xl font-bold text-foreground">
-        {de ? "Einstellungen" : "Settings"}
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl font-bold text-foreground">
+          {de ? "Einstellungen" : "Settings"}
+        </h2>
+      </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 p-1 bg-secondary/50 rounded-xl overflow-x-auto w-fit">
         {tabs.map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${activeTab === tab.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
+          <button 
+            key={tab.id} 
+            onClick={() => setActiveTab(tab.id)} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id ? "bg-primary text-primary-foreground shadow-md scale-105" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+          >
             <tab.icon className="w-4 h-4" /> {tab.label}
           </button>
         ))}
@@ -71,78 +174,46 @@ const AdminSettings = () => {
         {activeTab === "general" && (
           <div className="space-y-4">
             <h3 className="font-display text-lg font-bold text-foreground mb-4">{de ? "Shop-Informationen" : "Store Information"}</h3>
-            {[
-              { label: de ? "Shop-Name" : "Store Name", defaultValue: "Stoffverkauf Weber" },
-              { label: "E-Mail", defaultValue: "info@stoffverkauf-weber.de" },
-              { label: de ? "Telefon" : "Phone", defaultValue: "06171/53159" },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="text-sm font-medium text-foreground block mb-1">{f.label}</label>
-                <input defaultValue={f.defaultValue} className={inputClass} />
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">{de ? "Shop-Name" : "Store Name"}</label>
+                <input value={settings.general.storeName || ""} onChange={e => handleUpdate("general", "storeName", e.target.value)} className={inputClass} />
               </div>
-            ))}
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">E-Mail</label>
+                <input value={settings.general.email || ""} onChange={e => handleUpdate("general", "email", e.target.value)} className={inputClass} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">{de ? "Telefon" : "Phone"}</label>
+                <input value={settings.general.phone || ""} onChange={e => handleUpdate("general", "phone", e.target.value)} className={inputClass} />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground block mb-1">{de ? "Währung" : "Currency"}</label>
-                <select className={inputClass}><option>EUR (€)</option><option>USD ($)</option><option>CHF (CHF)</option></select>
+                <select value={settings.general.currency} onChange={e => handleUpdate("general", "currency", e.target.value)} className={inputClass}>
+                  <option>EUR (€)</option>
+                  <option>USD ($)</option>
+                  <option>CHF (CHF)</option>
+                </select>
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground block mb-1">{de ? "Sprache" : "Language"}</label>
-                <select defaultValue={lang} className={inputClass}><option value="de">Deutsch</option><option value="en">English</option></select>
+                <select value={settings.general.language} onChange={e => handleUpdate("general", "language", e.target.value)} className={inputClass}>
+                  <option value="de">Deutsch</option>
+                  <option value="en">English</option>
+                </select>
               </div>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">{de ? "Adresse" : "Address"}</label>
-              <textarea defaultValue="Musterstraße 1, 61440 Oberursel" rows={2} className={inputClass + " resize-none"} />
+              <textarea value={settings.general.address || ""} onChange={e => handleUpdate("general", "address", e.target.value)} rows={2} className={inputClass + " resize-none"} />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">{de ? "MwSt.-Nr." : "VAT Number"}</label>
-              <input defaultValue="DE123456789" className={inputClass} />
+              <input value={settings.general.vatNumber || ""} onChange={e => handleUpdate("general", "vatNumber", e.target.value)} className={inputClass} />
             </div>
-            <button onClick={save} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">{de ? "Speichern" : "Save"}</button>
-          </div>
-        )}
-
-        {activeTab === "shipping" && (
-          <div className="space-y-4">
-            <h3 className="font-display text-lg font-bold text-foreground mb-4">{de ? "Versandeinstellungen" : "Shipping Settings"}</h3>
-            {[
-              { label: de ? "Kostenloser Versand ab (€)" : "Free shipping threshold (€)", defaultValue: "100", type: "number" },
-              { label: de ? "Standard-Versandkosten (€)" : "Standard shipping cost (€)", defaultValue: "5.90", type: "number", step: "0.01" },
-              { label: de ? "Lieferzeit (Werktage)" : "Delivery time (business days)", defaultValue: "1-2", type: "text" },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="text-sm font-medium text-foreground block mb-1">{f.label}</label>
-                <input defaultValue={f.defaultValue} type={f.type} step={f.step} className={inputClass} />
-              </div>
-            ))}
-            <div className="flex items-center gap-3">
-              <input type="checkbox" defaultChecked className="w-4 h-4 accent-accent" />
-              <label className="text-sm text-foreground">{de ? "Internationaler Versand aktiviert" : "International shipping enabled"}</label>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">{de ? "Internationaler Versand (€)" : "International shipping (€)"}</label>
-              <input defaultValue="14.90" type="number" step="0.01" className={inputClass} />
-            </div>
-
-            <h4 className="font-semibold text-foreground pt-2">{de ? "Versandmethoden" : "Shipping Methods"}</h4>
-            {[
-              { name: "DHL Standard", time: de ? "1-2 Werktage" : "1-2 business days", price: "5.90 €", active: true },
-              { name: "DHL Express", time: de ? "Nächster Werktag" : "Next business day", price: "12.90 €", active: true },
-              { name: de ? "Abholung vor Ort" : "Local Pickup", time: "—", price: "0.00 €", active: false },
-            ].map(m => (
-              <div key={m.name} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-border">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{m.name}</p>
-                  <p className="text-xs text-muted-foreground">{m.time} · {m.price}</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" defaultChecked={m.active} className="sr-only peer" />
-                  <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
-                </label>
-              </div>
-            ))}
-            <button onClick={save} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">{de ? "Speichern" : "Save"}</button>
+            <SaveButton />
           </div>
         )}
 
@@ -150,33 +221,33 @@ const AdminSettings = () => {
           <div className="space-y-4">
             <h3 className="font-display text-lg font-bold text-foreground mb-4">{de ? "Steuereinstellungen" : "Tax Settings"}</h3>
             <div className="bg-secondary/50 rounded-lg p-3 border border-border">
-              <p className="text-xs text-muted-foreground">{de ? "Alle Preise inkl. MwSt. gemäß deutschem Steuerrecht." : "All prices include VAT according to German tax law."}</p>
+              <p className="text-xs text-muted-foreground">{de ? "Konfigurieren Sie Umsatzsteuersätze und rechtliche Hinweise." : "Configure VAT rates and legal notices."}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">{de ? "Standard-MwSt.-Satz (%)" : "Standard VAT Rate (%)"}</label>
-              <input defaultValue="19" type="number" className={inputClass} />
+              <input value={settings.tax.standardRate || 0} onChange={e => handleUpdate("tax", "standardRate", Number(e.target.value))} type="number" className={inputClass} />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">{de ? "Ermäßigter MwSt.-Satz (%)" : "Reduced VAT Rate (%)"}</label>
-              <input defaultValue="7" type="number" className={inputClass} />
+              <input value={settings.tax.reducedRate || 0} onChange={e => handleUpdate("tax", "reducedRate", Number(e.target.value))} type="number" className={inputClass} />
             </div>
             <div className="flex items-center gap-3">
-              <input type="checkbox" defaultChecked className="w-4 h-4 accent-accent" />
+              <input type="checkbox" checked={!!settings.tax.showIncVat} onChange={e => handleUpdate("tax", "showIncVat", e.target.checked)} className="w-4 h-4 accent-accent" />
               <label className="text-sm text-foreground">{de ? "Preise inkl. MwSt. anzeigen" : "Show prices including VAT"}</label>
             </div>
             <div className="flex items-center gap-3">
-              <input type="checkbox" defaultChecked className="w-4 h-4 accent-accent" />
+              <input type="checkbox" checked={!!settings.tax.showVatNotice} onChange={e => handleUpdate("tax", "showVatNotice", e.target.checked)} className="w-4 h-4 accent-accent" />
               <label className="text-sm text-foreground">{de ? 'MwSt.-Hinweis "inkl. MwSt." anzeigen' : 'Show VAT notice "incl. VAT"'}</label>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">{de ? "Steuernummer" : "Tax Number"}</label>
-              <input defaultValue="DE123456789" className={inputClass} />
+              <input value={settings.tax.taxNumber || ""} onChange={e => handleUpdate("tax", "taxNumber", e.target.value)} className={inputClass} />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">{de ? "Finanzamt" : "Tax Office"}</label>
-              <input defaultValue="Finanzamt Bad Homburg" className={inputClass} />
+              <input value={settings.tax.taxOffice || ""} onChange={e => handleUpdate("tax", "taxOffice", e.target.value)} className={inputClass} />
             </div>
-            <button onClick={save} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">{de ? "Speichern" : "Save"}</button>
+            <SaveButton />
           </div>
         )}
 
@@ -184,31 +255,34 @@ const AdminSettings = () => {
           <div className="space-y-4">
             <h3 className="font-display text-lg font-bold text-foreground mb-4">{de ? "Erscheinungsbild" : "Appearance"}</h3>
             {[
-              { label: de ? "Primärfarbe" : "Primary Color", defaultValue: "#3E005E" },
-              { label: de ? "Akzentfarbe" : "Accent Color", defaultValue: "#5600B2" },
+              { label: de ? "Primärfarbe" : "Primary Color", key: "primaryColor" },
+              { label: de ? "Akzentfarbe" : "Accent Color", key: "accentColor" },
             ].map(f => (
-              <div key={f.label}>
+              <div key={f.key}>
                 <label className="text-sm font-medium text-foreground block mb-1">{f.label}</label>
                 <div className="flex gap-3">
-                  <input type="color" defaultValue={f.defaultValue} className="w-10 h-10 rounded border border-border cursor-pointer" />
-                  <input defaultValue={f.defaultValue} className={inputClass + " font-mono"} />
+                  <input type="color" value={settings.appearance[f.key] || "#000000"} onChange={e => handleUpdate("appearance", f.key, e.target.value)} className="w-10 h-10 rounded border border-border cursor-pointer shrink-0" />
+                  <input value={settings.appearance[f.key] || ""} onChange={e => handleUpdate("appearance", f.key, e.target.value)} className={inputClass + " font-mono"} />
                 </div>
               </div>
             ))}
-            {[
-              { label: de ? "Schriftart (Display)" : "Display Font", options: ["Playfair Display", "Merriweather", "Lora", "Cormorant Garamond"] },
-              { label: de ? "Schriftart (Body)" : "Body Font", options: ["DM Sans", "Inter", "Open Sans", "Nunito Sans"] },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="text-sm font-medium text-foreground block mb-1">{f.label}</label>
-                <select className={inputClass}>{f.options.map(o => <option key={o}>{o}</option>)}</select>
-              </div>
-            ))}
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1">{de ? "Schriftart (Display)" : "Display Font"}</label>
+              <select value={settings.appearance.displayFont} onChange={e => handleUpdate("appearance", "displayFont", e.target.value)} className={inputClass}>
+                {["Playfair Display", "Merriweather", "Lora", "Cormorant Garamond"].map(o => <option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1">{de ? "Schriftart (Body)" : "Body Font"}</label>
+              <select value={settings.appearance.bodyFont} onChange={e => handleUpdate("appearance", "bodyFont", e.target.value)} className={inputClass}>
+                {["DM Sans", "Inter", "Open Sans", "Nunito Sans"].map(o => <option key={o}>{o}</option>)}
+              </select>
+            </div>
             <div className="flex items-center gap-3">
-              <input type="checkbox" className="w-4 h-4 accent-accent" />
+              <input type="checkbox" checked={!!settings.appearance.darkMode} onChange={e => handleUpdate("appearance", "darkMode", e.target.checked)} className="w-4 h-4 accent-accent" />
               <label className="text-sm text-foreground">{de ? "Dark Mode aktivieren" : "Enable dark mode"}</label>
             </div>
-            <button onClick={save} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">{de ? "Speichern" : "Save"}</button>
+            <SaveButton />
           </div>
         )}
 
@@ -216,119 +290,112 @@ const AdminSettings = () => {
           <div className="space-y-4">
             <h3 className="font-display text-lg font-bold text-foreground mb-4">{de ? "E-Mail Einstellungen" : "Email Settings"}</h3>
             {[
-              { label: de ? "Bestellbestätigungen senden" : "Send order confirmations", checked: true },
-              { label: de ? "Versandbenachrichtigungen senden" : "Send shipping notifications", checked: true },
-              { label: de ? "Bewertungsanfragen senden" : "Send review requests", checked: false },
-              { label: de ? "Newsletter-Willkommens-E-Mail" : "Newsletter welcome email", checked: true },
-              { label: de ? "Warenkorbabbruch-Erinnerung" : "Abandoned cart reminder", checked: false },
+              { label: de ? "Bestellbestätigungen senden" : "Send order confirmations", key: "orderConfirmations" },
+              { label: de ? "Versandbenachrichtigungen senden" : "Send shipping notifications", key: "shippingNotifications" },
+              { label: de ? "Bewertungsanfragen senden" : "Send review requests", key: "reviewRequests" },
+              { label: de ? "Newsletter-Willkommens-E-Mail" : "Newsletter welcome email", key: "newsletterWelcome" },
+              { label: de ? "Warenkorbabbruch-Erinnerung" : "Abandoned cart reminder", key: "abandonedCartReminder" },
             ].map(f => (
-              <div key={f.label} className="flex items-center gap-3">
-                <input type="checkbox" defaultChecked={f.checked} className="w-4 h-4 accent-accent" />
+              <div key={f.key} className="flex items-center gap-3">
+                <input type="checkbox" checked={!!settings.email[f.key]} onChange={e => handleUpdate("email", f.key, e.target.checked)} className="w-4 h-4 accent-accent" />
                 <label className="text-sm text-foreground">{f.label}</label>
               </div>
             ))}
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">{de ? "Absender-E-Mail" : "Sender Email"}</label>
-              <input defaultValue="noreply@stoffverkauf-weber.de" className={inputClass} />
+              <input value={settings.email.senderEmail || ""} onChange={e => handleUpdate("email", "senderEmail", e.target.value)} className={inputClass} />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">{de ? "Verzögerung Warenkorbabbruch (Stunden)" : "Abandoned Cart Delay (hours)"}</label>
-              <input defaultValue="2" type="number" className={inputClass} />
+              <input value={settings.email.abandonedCartDelay || 0} onChange={e => handleUpdate("email", "abandonedCartDelay", Number(e.target.value))} type="number" className={inputClass} />
             </div>
-            <button onClick={save} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">{de ? "Speichern" : "Save"}</button>
+            <SaveButton />
           </div>
         )}
 
         {activeTab === "roles" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-display text-lg font-bold text-foreground">{de ? "Benutzer & Rollen" : "Users & Roles"}</h3>
-              <button onClick={() => setShowAddUser(!showAddUser)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-display text-lg font-bold text-foreground">{de ? "Benutzer & Rollen" : "Users & Roles"}</h3>
+                <p className="text-sm text-muted-foreground">{de ? "Verwalten Sie Ihr Team und deren Zugriffsrechte." : "Manage your team and their access rights."}</p>
+              </div>
+              <button 
+                onClick={() => setShowAddUser(true)}
+                className="bg-accent text-accent-foreground px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-accent/90 transition-colors"
+              >
                 <Plus className="w-4 h-4" /> {de ? "Benutzer hinzufügen" : "Add User"}
               </button>
             </div>
 
-            <div className="bg-secondary/50 rounded-lg p-4 border border-border space-y-2">
-              <p className="text-xs font-semibold text-foreground">{de ? "Rollenbeschreibungen:" : "Role Descriptions:"}</p>
-              {[
-                { role: "admin", desc: de ? "Vollzugriff auf alle Bereiche" : "Full access to all areas" },
-                { role: "editor", desc: de ? "Produkte & Inhalte bearbeiten, Bestellungen ansehen" : "Edit products & content, view orders" },
-                { role: "viewer", desc: de ? "Nur Lesezugriff" : "Read-only access" },
-              ].map(r => (
-                <div key={r.role} className="flex items-center gap-2 text-xs">
-                  <span className={`px-2 py-0.5 rounded-full font-semibold ${r.role === "admin" ? "bg-primary/10 text-primary" : r.role === "editor" ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"}`}>{r.role}</span>
-                  <span className="text-muted-foreground">{r.desc}</span>
+            <div className="space-y-3">
+              {users.map((u: any) => (
+                <div key={u._id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                      {u.firstName[0]}{u.lastName[0]}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm text-foreground">{u.firstName} {u.lastName}</h4>
+                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="px-2.5 py-1 rounded-full bg-accent/10 text-accent text-[10px] font-bold uppercase tracking-wider">
+                      {u.role}
+                    </span>
+                    <button 
+                      onClick={() => deleteUser(u._id)}
+                      className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
+              {users.length === 0 && (
+                <div className="text-center py-12 border-2 border-dashed border-border rounded-xl">
+                  <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">{de ? "Keine zusätzlichen Administratoren gefunden." : "No additional administrators found."}</p>
+                </div>
+              )}
             </div>
 
             {showAddUser && (
-              <div className="bg-card rounded-xl border border-border p-4">
-                <h4 className="font-semibold text-foreground mb-3 text-sm">{de ? "Neuer Benutzer" : "New User"}</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-foreground block mb-1">{de ? "Name" : "Name"}</label>
-                    <input value={newUser.name} onChange={e => setNewUser({ ...newUser, name: e.target.value })} className={inputClass} />
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                <div className="bg-card w-full max-w-md rounded-2xl border border-border p-6 shadow-elevated">
+                  <h3 className="font-display text-xl font-bold mb-4">{de ? "Neuen Admin hinzufügen" : "Add New Admin"}</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Vorname</label>
+                        <input className={inputClass} value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Nachname</label>
+                        <input className={inputClass} value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">E-Mail</label>
+                      <input className={inputClass} type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Passwort</label>
+                      <input className={inputClass} type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                      <button onClick={() => setShowAddUser(false)} className="flex-1 px-4 py-2 rounded-lg border border-border text-sm font-semibold hover:bg-secondary transition-colors">
+                        {de ? "Abbrechen" : "Cancel"}
+                      </button>
+                      <button onClick={addUser} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+                        {de ? "Hinzufügen" : "Add"}
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-foreground block mb-1">Email</label>
-                    <input value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} type="email" className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-foreground block mb-1">{de ? "Rolle" : "Role"}</label>
-                    <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value as UserRole["role"] })} className={inputClass}>
-                      <option value="admin">Admin</option>
-                      <option value="editor">Editor</option>
-                      <option value="viewer">Viewer</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex gap-3 mt-3">
-                  <button onClick={handleAddUser} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90">{de ? "Hinzufügen" : "Add"}</button>
-                  <button onClick={() => setShowAddUser(false)} className="bg-secondary text-foreground px-4 py-2 rounded-lg text-sm font-semibold">{de ? "Abbrechen" : "Cancel"}</button>
                 </div>
               </div>
             )}
-
-            <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-secondary/50">
-                    <th className="text-left p-4 text-muted-foreground font-medium">{de ? "Name" : "Name"}</th>
-                    <th className="text-left p-4 text-muted-foreground font-medium hidden md:table-cell">Email</th>
-                    <th className="text-center p-4 text-muted-foreground font-medium">{de ? "Rolle" : "Role"}</th>
-                    <th className="text-center p-4 text-muted-foreground font-medium">Status</th>
-                    <th className="text-right p-4 text-muted-foreground font-medium">{de ? "Aktionen" : "Actions"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map(u => (
-                    <tr key={u.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                      <td className="p-4 font-medium text-foreground">{u.name}</td>
-                      <td className="p-4 text-muted-foreground hidden md:table-cell">{u.email}</td>
-                      <td className="p-4 text-center">
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${u.role === "admin" ? "bg-primary/10 text-primary" : u.role === "editor" ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"}`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" checked={u.active} onChange={() => toggleUser(u.id)} disabled={u.role === "admin"} className="sr-only peer" />
-                          <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full disabled:opacity-50" />
-                        </label>
-                      </td>
-                      <td className="p-4 text-right">
-                        {u.role !== "admin" && (
-                          <button onClick={() => removeUser(u.id, u.name)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         )}
 
@@ -336,25 +403,17 @@ const AdminSettings = () => {
           <div className="space-y-4">
             <h3 className="font-display text-lg font-bold text-foreground mb-4">{de ? "Sicherheit" : "Security"}</h3>
             {[
-              { label: de ? "SSL erzwingen" : "Force SSL", checked: true },
-              { label: de ? "Cookie-Banner anzeigen" : "Show cookie banner", checked: true },
-              { label: de ? "Wartungsmodus aktivieren" : "Enable maintenance mode", checked: false },
-              { label: de ? "Zwei-Faktor-Authentifizierung (2FA)" : "Two-Factor Authentication (2FA)", checked: false },
+              { label: de ? "SSL erzwingen" : "Force SSL", key: "forceSsl" },
+              { label: de ? "Cookie-Banner anzeigen" : "Show cookie banner", key: "showCookieBanner" },
+              { label: de ? "Wartungsmodus aktivieren" : "Enable maintenance mode", key: "maintenanceMode" },
+              { label: de ? "Zwei-Faktor-Authentifizierung (2FA)" : "Two-Factor Authentication (2FA)", key: "twoFactorAuth" },
             ].map(f => (
-              <div key={f.label} className="flex items-center gap-3">
-                <input type="checkbox" defaultChecked={f.checked} className="w-4 h-4 accent-accent" />
+              <div key={f.key} className="flex items-center gap-3">
+                <input type="checkbox" checked={!!settings.security[f.key]} onChange={e => handleUpdate("security", f.key, e.target.checked)} className="w-4 h-4 accent-accent" />
                 <label className="text-sm text-foreground">{f.label}</label>
               </div>
             ))}
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">{de ? "Admin-Passwort ändern" : "Change admin password"}</label>
-              <input type="password" placeholder="••••••••" className={inputClass} />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">{de ? "Passwort bestätigen" : "Confirm password"}</label>
-              <input type="password" placeholder="••••••••" className={inputClass} />
-            </div>
-            <button onClick={save} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">{de ? "Speichern" : "Save"}</button>
+            <SaveButton />
           </div>
         )}
       </div>

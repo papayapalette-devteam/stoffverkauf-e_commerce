@@ -242,3 +242,18 @@ exports.bulkUpload = async (req, res) => {
   }
 };
 
+exports.getBadges = async (req, res) => {
+  try {
+    const badges = await Product.distinct("badge", { badge: { $ne: "" } });
+    res.status(200).json({
+      success: true,
+      badges
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+

@@ -26,8 +26,10 @@ const ProductGrid = () => {
       const fetchCategories = async () => {
         try {
           const resp = await api.get("/api/category/get-categories");
+        
+          
   
-          const mapped = resp.data.data.map((cat) => ({
+          const mapped = resp.data.categories.map((cat) => ({
             id: cat._id,
             name: cat.name,
             slug: cat.slug,

@@ -5,16 +5,18 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import { useI18n } from "@/lib/i18n";
+import { useSettings } from "@/lib/settings-context";
 import SEO from "@/components/SEO";
 
 const Contact = () => {
   const { lang } = useI18n();
+  const { settings } = useSettings();
   const [submitted, setSubmitted] = useState(false);
 
   const info = [
-    { icon: Phone, label: lang === "de" ? "Telefon" : "Phone", value: "06171/53159" },
-    { icon: Mail, label: "E-Mail", value: "info@stoffverkauf-weber.de" },
-    { icon: MapPin, label: lang === "de" ? "Adresse" : "Address", value: "Oberursel, Deutschland" },
+    { icon: Phone, label: lang === "de" ? "Telefon" : "Phone", value: settings.general.phone || "06171/53159" },
+    { icon: Mail, label: "E-Mail", value: settings.general.email || "info@stoffverkauf-weber.de" },
+    { icon: MapPin, label: lang === "de" ? "Adresse" : "Address", value: settings.general.address || "Oberursel, Deutschland" },
     { icon: Clock, label: lang === "de" ? "Öffnungszeiten" : "Hours", value: lang === "de" ? "Mo-Fr: 10-18 Uhr, Sa: 10-14 Uhr" : "Mon-Fri: 10am-6pm, Sat: 10am-2pm" },
   ];
 

@@ -63,6 +63,14 @@ const OrderSchema = new mongoose.Schema({
   },
   deliveredAt: Date,
   trackingNumber: String,
+  discount: {
+    type: Number,
+    default: 0
+  },
+  appliedCoupon: {
+    type: String,
+    default: ""
+  },
   viewedByAdmin: {
     type: Boolean,
     default: false

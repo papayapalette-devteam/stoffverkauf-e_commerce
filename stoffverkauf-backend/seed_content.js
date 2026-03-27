@@ -29,21 +29,15 @@ const mockSections = [
 ];
 
 async function seed() {
-  await mongoose.connect(process.env.URL);
-  // console.log("Connected to DB");
-
   for (const page of defaultPages) {
     await Page.findOneAndUpdate({ id: page.id }, page, { upsert: true, new: true });
-    // console.log(`Seeded page: ${page.id}`);
   }
 
   for (const section of mockSections) {
     await HomeSection.findOneAndUpdate({ id: section.id }, section, { upsert: true, new: true });
-    // console.log(`Seeded home section: ${section.id}`);
   }
 
   console.log("Seeding complete");
-  mongoose.connection.close();
 }
 
 // seed();

@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { useSettings } from "@/lib/settings-context";
 
 interface SEOProps {
   title: string;
@@ -10,7 +11,6 @@ interface SEOProps {
   jsonLd?: Record<string, unknown>;
 }
 
-const SITE_NAME = "Stoffverkauf Weber";
 const BASE_URL = "https://www.stoffverkauf-weber.de";
 const DEFAULT_IMAGE = "https://www.stoffverkauf-weber.de/og-image.jpg";
 
@@ -23,7 +23,9 @@ const SEO = ({
   noIndex = false,
   jsonLd,
 }: SEOProps) => {
-  const fullTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
+  const { settings } = useSettings();
+  const siteName = settings.general.storeName || "Stoffverkauf Weber";
+  const fullTitle = title === siteName ? title : `${title} | ${siteName}`;
   const url = `${BASE_URL}${path}`;
   const ogImage = image || DEFAULT_IMAGE;
 
@@ -40,7 +42,7 @@ const SEO = ({
       <meta property="og:url" content={url} />
       <meta property="og:type" content={type} />
       <meta property="og:image" content={ogImage} />
-      <meta property="og:site_name" content={SITE_NAME} />
+      <meta property="og:site_name" content={siteName} />
       <meta property="og:locale" content="de_DE" />
       <meta property="og:locale:alternate" content="en_US" />
 

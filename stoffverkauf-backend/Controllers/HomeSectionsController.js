@@ -11,8 +11,7 @@ exports.getHomeSections = async (req, res) => {
 
 exports.updateHomeSection = async (req, res) => {
   try {
-    const section = await HomeSection.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
-    if (!section) return res.status(404).json({ message: "Section not found" });
+    const section = await HomeSection.findOneAndUpdate({ id: req.params.id }, req.body, { new: true, upsert: true });
     res.json(section);
   } catch (err) {
     res.status(400).json({ message: err.message });

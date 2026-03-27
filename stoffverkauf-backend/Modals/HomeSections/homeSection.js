@@ -5,6 +5,7 @@ const homeSectionSchema = new mongoose.Schema({
   type: { type: String, required: true },
   title: { type: String, required: true },
   enabled: { type: Boolean, default: true },
+  data: { type: mongoose.Schema.Types.Mixed, default: {} },
 });
 
 module.exports = mongoose.model("HomeSection", homeSectionSchema);

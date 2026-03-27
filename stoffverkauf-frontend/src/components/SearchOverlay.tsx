@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, SlidersHorizontal, ArrowUpDown, Star, ShoppingBag, Heart, Check } from "lucide-react";
 import { Link } from "react-router-dom";
-import { products, categories, fabricTypeFilters } from "@/lib/products";
-import { useCart } from "@/lib/cart-context";
+import api from "../../api";
+import { useCart, type Product } from "@/lib/cart-context";
 import { useWishlist } from "@/lib/wishlist-context";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,7 @@ interface SearchOverlayProps {
 type SortOption = "relevance" | "price-asc" | "price-desc" | "rating" | "reviews";
 
 const priceMin = 0;
-const priceMax = 150;
+const priceMax = 500;
 
 const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
   const { t, lang } = useI18n();
@@ -26,8 +26,13 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
 
   const [query, setQuery] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([priceMin, priceMax]);
+  
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+  const [dbBadges, setDbBadges] = useState<string[]>([]);
+  
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
-  const [activeFabricTypes, setActiveFabricTypes] = useState<string[]>([]);
+  const [activeBadges, setActiveBadges] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("relevance");
   const [showFilters, setShowFilters] = useState(true);
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "inStock">("all");
@@ -36,6 +41,30 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
       document.body.style.overflow = "hidden";
+      
+      // Fetch dynamic data
+      const fetchData = async () => {
+        try {
+          const [prodRes, catRes, badgeRes] = await Promise.all([
+            api.get("/api/products/get-product?limit=1000"),
+            api.get("/api/category/get-categories"),
+            api.get("/api/products/get-badges")
+          ]);
+          
+          if (prodRes.data.success) setDbProducts(prodRes.data.products);
+          if (catRes.data) {
+            const names = catRes.data.categories
+              .filter((c: any) => c.enabled)
+              .map((c: any) => c.name);
+            setDbCategories(names);
+          }
+          if (badgeRes.data.success) setDbBadges(badgeRes.data.badges);
+        } catch (error) {
+          console.error("Error fetching dynamic search data:", error);
+        }
+      };
+      
+      fetchData();
     } else {
       document.body.style.overflow = "";
     }
@@ -54,23 +83,23 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
     );
   };
 
-  const toggleFabricType = (type: string) => {
-    setActiveFabricTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+  const toggleBadge = (badge: string) => {
+    setActiveBadges((prev) =>
+      prev.includes(badge) ? prev.filter((b) => b !== badge) : [...prev, badge]
     );
   };
 
-  // Count products per fabric type
-  const fabricTypeCounts = useMemo(() => {
+  // Count products per badge
+  const badgeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const ft of fabricTypeFilters) {
-      counts[ft] = products.filter((p) => p.fabricTypes?.includes(ft)).length;
+    for (const b of dbBadges) {
+      counts[b] = dbProducts.filter((p) => p.badge === b).length;
     }
     return counts;
-  }, []);
+  }, [dbBadges, dbProducts]);
 
   const filtered = useMemo(() => {
-    let result = [...products];
+    let result = [...dbProducts];
 
     if (query.trim()) {
       const q = query.toLowerCase();
@@ -78,8 +107,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q) ||
-          (p.badge && p.badge.toLowerCase().includes(q)) ||
-          (p.fabricTypes && p.fabricTypes.some((ft) => ft.toLowerCase().includes(q)))
+          (p.badge && p.badge.toLowerCase().includes(q))
       );
     }
 
@@ -87,27 +115,28 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
       result = result.filter((p) => activeCategories.includes(p.category));
     }
 
-    if (activeFabricTypes.length > 0) {
-      result = result.filter((p) =>
-        p.fabricTypes && activeFabricTypes.some((ft) => p.fabricTypes!.includes(ft))
-      );
+    if (activeBadges.length > 0) {
+      result = result.filter((p) => activeBadges.includes(p.badge));
     }
 
     if (availabilityFilter === "inStock") {
       result = result.filter((p) => p.inStock !== false);
     }
 
-    result = result.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
+    result = result.filter((p) => {
+      const price = p.salePrice || p.price;
+      return price >= priceRange[0] && price <= priceRange[1];
+    });
 
     switch (sortBy) {
-      case "price-asc": result.sort((a, b) => a.price - b.price); break;
-      case "price-desc": result.sort((a, b) => b.price - a.price); break;
-      case "rating": result.sort((a, b) => b.rating - a.rating); break;
-      case "reviews": result.sort((a, b) => b.reviews - a.reviews); break;
+      case "price-asc": result.sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price)); break;
+      case "price-desc": result.sort((a, b) => (b.salePrice || b.price) - (a.salePrice || a.price)); break;
+      case "rating": result.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
+      case "reviews": result.sort((a, b) => (b.reviews || 0) - (a.reviews || 0)); break;
     }
 
     return result;
-  }, [query, activeCategories, activeFabricTypes, priceRange, sortBy, availabilityFilter]);
+  }, [query, dbProducts, activeCategories, activeBadges, priceRange, sortBy, availabilityFilter]);
 
   const sortOptions: { value: SortOption; label: string }[] = [
     { value: "relevance", label: lang === "de" ? "Relevanz" : "Relevance" },
@@ -117,19 +146,23 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
     { value: "reviews", label: lang === "de" ? "Meiste Bewertungen" : "Most reviewed" },
   ];
 
-  const filterCategories = categories.filter((c) => c !== "Alle");
-
-  const activeFilterCount = activeCategories.length + activeFabricTypes.length +
+  const activeFilterCount = activeCategories.length + activeBadges.length +
     (priceRange[0] > priceMin || priceRange[1] < priceMax ? 1 : 0) +
     (availabilityFilter !== "all" ? 1 : 0);
 
   const resetAll = () => {
     setQuery("");
     setActiveCategories([]);
-    setActiveFabricTypes([]);
+    setActiveBadges([]);
     setPriceRange([priceMin, priceMax]);
     setSortBy("relevance");
     setAvailabilityFilter("all");
+  };
+
+  const getLabel = (prefix: string, value: string) => {
+    const key = `${prefix}.${value}` as TranslationKey;
+    const translated = t(key);
+    return translated === key ? value : translated;
   };
 
   return (
@@ -204,29 +237,29 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                       )}
                     </div>
 
-                    {/* Fabric Type checkboxes */}
+                    {/* Badge checkboxes (Dynamic) */}
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                        {lang === "de" ? "Stoffart" : "Fabric Type"}
+                        {lang === "de" ? "Besonderheiten" : "Special Features"}
                       </p>
                       <div className="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">
-                        {fabricTypeFilters.map((ft) => {
-                          const isActive = activeFabricTypes.includes(ft);
-                          const count = fabricTypeCounts[ft] || 0;
+                        {dbBadges.map((badge) => {
+                          const isActive = activeBadges.includes(badge);
+                          const count = badgeCounts[badge] || 0;
                           return (
                             <label
-                              key={ft}
+                              key={badge}
                               className={`flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer transition-colors text-sm ${
                                 isActive ? "bg-accent/10 text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                               }`}
                             >
                               <Checkbox
                                 checked={isActive}
-                                onCheckedChange={() => toggleFabricType(ft)}
+                                onCheckedChange={() => toggleBadge(badge)}
                                 className="h-4 w-4"
                               />
                               <span className="flex-1 leading-tight">
-                                {t(`fabric.${ft}` as TranslationKey)}
+                                {getLabel("badge", badge)}
                               </span>
                               <span className="text-[10px] text-muted-foreground font-medium">
                                 ({count})
@@ -237,13 +270,13 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                       </div>
                     </div>
 
-                    {/* Category chips */}
+                    {/* Category chips (Dynamic) */}
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         {lang === "de" ? "Kategorie" : "Category"}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {filterCategories.map((cat) => (
+                        {dbCategories.map((cat) => (
                           <button
                             key={cat}
                             onClick={() => toggleCategory(cat)}
@@ -253,7 +286,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                                 : "bg-secondary text-secondary-foreground hover:bg-muted"
                             }`}
                           >
-                            {t(`cat.${cat}` as TranslationKey)}
+                            {getLabel("cat", cat)}
                           </button>
                         ))}
                       </div>
@@ -356,37 +389,37 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                     className="overflow-hidden"
                   >
                     <div className="p-4 space-y-4 max-h-[50vh] overflow-y-auto">
-                      {/* Fabric types as scrollable checkboxes */}
+                      {/* Badges (Dynamic) */}
                       <div>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                          {lang === "de" ? "Stoffart" : "Fabric Type"}
+                          {lang === "de" ? "Besonderheiten" : "Special Features"}
                         </p>
                         <div className="grid grid-cols-2 gap-1">
-                          {fabricTypeFilters.map((ft) => {
-                            const isActive = activeFabricTypes.includes(ft);
-                            const count = fabricTypeCounts[ft] || 0;
+                          {dbBadges.map((badge) => {
+                            const isActive = activeBadges.includes(badge);
+                            const count = badgeCounts[badge] || 0;
                             return (
                               <label
-                                key={ft}
+                                key={badge}
                                 className={`flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer text-xs ${
                                   isActive ? "bg-accent/10 text-foreground" : "text-muted-foreground"
                                 }`}
                               >
                                 <Checkbox
                                   checked={isActive}
-                                  onCheckedChange={() => toggleFabricType(ft)}
+                                  onCheckedChange={() => toggleBadge(badge)}
                                   className="h-3.5 w-3.5"
                                 />
-                                <span className="truncate">{t(`fabric.${ft}` as TranslationKey)} ({count})</span>
+                                <span className="truncate">{getLabel("badge", badge)} ({count})</span>
                               </label>
                             );
                           })}
                         </div>
                       </div>
 
-                      {/* Categories */}
+                      {/* Categories (Dynamic) */}
                       <div className="flex flex-wrap gap-1.5">
-                        {filterCategories.map((cat) => (
+                        {dbCategories.map((cat) => (
                           <button
                             key={cat}
                             onClick={() => toggleCategory(cat)}
@@ -396,7 +429,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                                 : "bg-secondary text-secondary-foreground"
                             }`}
                           >
-                            {t(`cat.${cat}` as TranslationKey)}
+                            {getLabel("cat", cat)}
                           </button>
                         ))}
                       </div>
@@ -451,15 +484,15 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                 </div>
 
                 {/* Active filter tags */}
-                {(activeFabricTypes.length > 0 || activeCategories.length > 0) && (
+                {(activeBadges.length > 0 || activeCategories.length > 0) && (
                   <div className="flex flex-wrap gap-1.5 mb-4">
-                    {activeFabricTypes.map((ft) => (
+                    {activeBadges.map((badge) => (
                       <button
-                        key={ft}
-                        onClick={() => toggleFabricType(ft)}
+                        key={badge}
+                        onClick={() => toggleBadge(badge)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors"
                       >
-                        {t(`fabric.${ft}` as TranslationKey)}
+                        {getLabel("badge", badge)}
                         <X className="w-3 h-3" />
                       </button>
                     ))}
@@ -469,7 +502,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                         onClick={() => toggleCategory(cat)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/15 text-primary text-xs font-medium hover:bg-primary/25 transition-colors"
                       >
-                        {t(`cat.${cat}` as TranslationKey)}
+                        {getLabel("cat", cat)}
                         <X className="w-3 h-3" />
                       </button>
                     ))}
@@ -489,35 +522,35 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filtered.map((product, i) => {
-                      const wishlisted = isInWishlist(product.id);
+                      const wishlisted = isInWishlist(product._id);
                       return (
                         <motion.div
-                          key={product.id}
+                          key={product._id}
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.03 }}
                           className="group"
                         >
                           <Link
-                            to={`/product/${product.id}`}
+                            to={`/product/${product._id}`}
                             onClick={onClose}
                             className="block relative aspect-square rounded-xl overflow-hidden bg-secondary mb-2"
                           >
                             <img
-                              src={product.image}
+                              src={product.images && product.images.length > 0 ? product.images[0] : ""}
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                             {product.badge && (
                               <span className="absolute top-2 left-2 bg-accent text-accent-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                                {t(`badge.${product.badge}` as TranslationKey)}
+                                {getLabel("badge", product.badge)}
                               </span>
                             )}
                             <button
-                              onClick={(e) => { e.preventDefault(); toggleItem(product); }}
-                              className={`absolute top-2 right-2 p-1.5 rounded-full transition-all ${
-                                wishlisted ? "bg-destructive text-destructive-foreground opacity-100" : "bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100"
-                              }`}
+                               onClick={(e) => { e.preventDefault(); toggleItem(product); }}
+                               className={`absolute top-2 right-2 p-1.5 rounded-full transition-all ${
+                                 wishlisted ? "bg-destructive text-destructive-foreground opacity-100" : "bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100"
+                               }`}
                             >
                               <Heart className={`w-3.5 h-3.5 ${wishlisted ? "fill-current" : ""}`} />
                             </button>
@@ -530,21 +563,21 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                           </Link>
                           <div className="space-y-0.5">
                             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                              {t(`cat.${product.category}` as TranslationKey)}
+                              {getLabel("cat", product.category)}
                             </p>
                             <h3 className="font-body font-semibold text-foreground text-xs lg:text-sm leading-tight">
                               {product.name}
                             </h3>
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-body font-bold text-foreground text-sm">{product.price.toFixed(2)} €</p>
+                                <p className="font-body font-bold text-foreground text-sm">{(product.salePrice || product.price).toFixed(2)} €</p>
                                 {product.width && (
                                   <p className="text-[10px] text-muted-foreground">{product.width}</p>
                                 )}
                               </div>
                               <div className="flex items-center gap-0.5">
                                 <Star className="w-3 h-3 fill-accent text-accent" />
-                                <span className="text-[10px] text-muted-foreground">{product.rating}</span>
+                                <span className="text-[10px] text-muted-foreground">{product.rating || 0}</span>
                               </div>
                             </div>
                           </div>

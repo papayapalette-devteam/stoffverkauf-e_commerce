@@ -5,6 +5,7 @@ import { useCart } from "@/lib/cart-context";
 import { useI18n } from "@/lib/i18n";
 import { useWishlist } from "@/lib/wishlist-context";
 import { useAuth } from "@/lib/auth-context";
+import { useSettings } from "@/lib/settings-context";
 import { motion, AnimatePresence } from "framer-motion";
 import SearchOverlay from "./SearchOverlay";
 
@@ -13,6 +14,7 @@ const Navbar = () => {
   const { t, lang, setLang } = useI18n();
   const { items: wishlistItems } = useWishlist();
   const { user, isLoggedIn } = useAuth();
+  const { settings } = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -53,7 +55,7 @@ const Navbar = () => {
             </button>
 
             <Link to="/" className="font-display text-lg lg:text-2xl font-bold tracking-tight text-foreground">
-              Stoffverkauf<span className="text-gradient-accent"> Weber</span>
+              {settings.general.storeName || "Stoffverkauf Weber"}
             </Link>
 
             <nav className="hidden lg:flex items-center gap-8">

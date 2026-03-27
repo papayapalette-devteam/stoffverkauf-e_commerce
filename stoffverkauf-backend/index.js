@@ -41,7 +41,6 @@ app.use((req, res, next) => {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions)); 
 
-connect();
 app.get('/',(req,res)=>
 {
     res.send("welcome to stoffverkauf")
@@ -72,18 +71,21 @@ app.use('/api/order',require('./Routes/order'));
 app.use('/api/integration',require('./Routes/integration'));
 app.use('/api/pages', require('./Routes/pages'));
 app.use('/api/home-sections', require('./Routes/homeSections'));
-
-
-
+app.use('/api/settings', require('./Routes/settings'));
 
 // ===============================================
 //          all routes end
 // ===============================================
 
-
-const server=app.listen(process.env.PORT,()=>
-{
-    console.log(`server is running on port:${process.env.PORT}`);
-})
-server.setTimeout(5 * 60 * 1000); // 300000 ms = 5 minutes
+(async () => {
+    try {
+        await connect();
+        const server = app.listen(process.env.PORT, () => {
+            console.log(`server is running on port:${process.env.PORT}`);
+        });
+        server.setTimeout(5 * 60 * 1000); 
+    } catch (err) {
+        console.error("Failed to start server:", err);
+    }
+})();
 

@@ -3,16 +3,15 @@ const seed = require('./seed_content');
 
 require('dotenv').config()
 
-const connect=()=>
-    {
-        try {
-            const resp=mongoose.connect(process.env.URL)
-            console.log('database connect successfully');
-            seed()
-        } 
-        catch (error)
-         {
-            console.log(error);
-        }
-    }
-    module.exports= connect;
+const connect = async () => {
+  try {
+    await mongoose.connect(process.env.URL);
+    console.log('database connect successfully');
+    await seed();
+    console.log('Seeding process finished');
+  } catch (error) {
+    console.error('Database connection error:', error);
+  }
+};
+
+module.exports = connect;

@@ -46,13 +46,14 @@ const AdminContent = () => {
   const [activeTab, setActiveTab] = useState<"sections" | "hero" | "blog" | "pages">("pages");
   const [sections, setSections] = useState<any[]>([]);
   const [loadingSections, setLoadingSections] = useState(true);
-  const [heroForm, setHeroForm] = useState({
-    badge: "Neue Kollektion 2026",
-    title1: "Italienische",
-    title2: "Designerstoffe",
-    subtitle: "Hochwertige Stoffe direkt aus Italien.",
-    cta1: "Jetzt einkaufen",
-    cta2: "Stoffe entdecken",
+  const [heroForm, setHeroForm] = useState<any>({
+    badge: "",
+    title1: "",
+    title2: "",
+    subtitle: "",
+    cta1: "",
+    cta2: "",
+    images: [] // array of image URLs
   });
 
   // Blog state
@@ -82,7 +83,61 @@ const AdminContent = () => {
 
   useEffect(() => {
     fetchSections();
+    fetchHeroData();
   }, []);
+
+  const fetchHeroData = async () => {
+    try {
+      const res = await api.get("/api/home-sections");
+      const hero = res.data.find((s: any) => s.id === "hero");
+      if (hero && hero.data) {
+        setHeroForm(hero.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch hero data", err);
+    }
+  };
+
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    try {
+      setUploading(true);
+      const urls = await uploadFiles(Array.from(files));
+      if (urls && urls.length > 0) {
+        setHeroForm((prev: any) => ({
+          ...prev,
+          images: [...(prev.images || []), ...urls]
+        }));
+        toast.success(de ? "Bilder hochgeladen" : "Images uploaded");
+      }
+    } catch (err) {
+      toast.error("Failed to upload images");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeHeroImage = (index: number) => {
+    setHeroForm((prev: any) => ({
+      ...prev,
+      images: prev.images.filter((_: any, i: number) => i !== index)
+    }));
+  };
+
+  const saveHeroData = async () => {
+    try {
+      await api.put("/api/home-sections/hero", {
+        data: heroForm,
+        title: "Hero Banner",
+        type: "hero"
+      });
+      toast.success(de ? "Hero aktualisiert" : "Hero updated");
+    } catch (err) {
+      toast.error("Failed to save hero data");
+    }
+  };
 
   const toggleSection = async (id: string, currentStatus: boolean) => {
     try {
@@ -329,24 +384,78 @@ const handleDeletePost = async (id: string) => {
 
       {activeTab === "hero" && (
         <div className="bg-card rounded-xl border border-border p-6 shadow-card max-w-2xl">
-          <div className="mb-6 p-4 border-2 border-dashed border-border rounded-xl text-center">
-            <ImageIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground mb-2">{de ? "Hero-Bild ändern" : "Change hero image"}</p>
-            <button className="text-xs bg-secondary text-foreground px-4 py-2 rounded-lg font-semibold">{de ? "Bild hochladen" : "Upload Image"}</button>
-          </div>
-          <div className="space-y-4">
-            {Object.entries(heroForm).map(([key, value]) => (
-              <div key={key}>
-                <label className="text-sm font-medium text-foreground block mb-1 capitalize">{key}</label>
-                <input
-                  value={value}
-                  onChange={(e) => setHeroForm({ ...heroForm, [key]: e.target.value })}
-                  className={inputClass}
+          <div className="mb-6 space-y-4">
+             <div className="p-4 border-2 border-dashed border-border rounded-xl text-center">
+                <ImageIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground mb-4">
+                   {de ? "Hero-Bilder verwalten" : "Manage hero images"}
+                </p>
+                <input 
+                  type="file" 
+                  multiple 
+                  onChange={handleHeroImageUpload} 
+                  className="hidden" 
+                  id="hero-file-upload" 
+                  accept="image/*"
                 />
+                <label 
+                  htmlFor="hero-file-upload" 
+                  className="inline-block text-xs bg-secondary text-foreground px-4 py-2 rounded-lg font-semibold cursor-pointer hover:bg-muted"
+                >
+                  {uploading ? (de ? "Lade hoch..." : "Uploading...") : (de ? "Bilder hochladen" : "Upload Images")}
+                </label>
+             </div>
+
+             {/* Image Preview Grid */}
+             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+               {heroForm.images?.map((url: string, index: number) => (
+                 <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border border-border bg-muted">
+                    <img src={url} alt={`Hero ${index}`} className="w-full h-full object-cover" />
+                    <button 
+                      onClick={() => removeHeroImage(index)}
+                      className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                 </div>
+               ))}
+             </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">Badge</label>
+                <input value={heroForm.badge} onChange={e => setHeroForm({...heroForm, badge: e.target.value})} className={inputClass} />
               </div>
-            ))}
-            <button onClick={() => toast.success(de ? "Hero aktualisiert" : "Hero updated")} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-              {de ? "Speichern" : "Save"}
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">Title 1</label>
+                <input value={heroForm.title1} onChange={e => setHeroForm({...heroForm, title1: e.target.value})} className={inputClass} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">Title 2</label>
+                <input value={heroForm.title2} onChange={e => setHeroForm({...heroForm, title2: e.target.value})} className={inputClass} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">Sub Title</label>
+                <input value={heroForm.subtitle} onChange={e => setHeroForm({...heroForm, subtitle: e.target.value})} className={inputClass} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">CTA 1 Text</label>
+                <input value={heroForm.cta1} onChange={e => setHeroForm({...heroForm, cta1: e.target.value})} className={inputClass} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">CTA 2 Text</label>
+                <input value={heroForm.cta2} onChange={e => setHeroForm({...heroForm, cta2: e.target.value})} className={inputClass} />
+              </div>
+            </div>
+            
+            <button onClick={saveHeroData} className="bg-primary text-primary-foreground w-full py-3 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+              {de ? "Aktualisieren" : "Update Hero Banner"}
             </button>
           </div>
         </div>

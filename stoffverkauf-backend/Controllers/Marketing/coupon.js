@@ -86,7 +86,7 @@ exports.getCoupons = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.status(200).json({
-      data,
+      coupons: data,
       pagination: {
         total,
         totalActive,
@@ -131,5 +131,71 @@ exports.toggleEnable = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// VALIDATE COUPON
+exports.validateCoupon = async (req, res) => {
+  try {
+    const { code, total } = req.body;
+    if (!code) return res.status(400).json({ success: false, message: "Code is required" });
+
+    const coupon = await Coupon.findOne({ 
+      code: code.toUpperCase(), 
+      active: true 
+    });
+
+    if (!coupon) {
+      return res.status(200).json({ 
+        success: false, 
+        message: "Invalid or inactive coupon code" 
+      });
+    }
+
+    // Check expiration if present (expects YYYY-MM-DD)
+    if (coupon.expires) {
+      const today = new Date().toISOString().split('T')[0];
+      if (coupon.expires < today) {
+        return res.status(200).json({ success: false, message: "Coupon has expired" });
+      }
+    }
+
+    // Check usage limits
+    if (coupon.uses >= coupon.maxUses) {
+      return res.status(200).json({ success: false, message: "Coupon usage limit reached" });
+    }
+
+    // Check minimum order
+    if (total < coupon.minOrder) {
+      return res.status(200).json({ 
+        success: false, 
+        message: `Min. order for this coupon is €${coupon.minOrder.toFixed(2)}` 
+      });
+    }
+
+    // Calculate discount
+    let discount = 0;
+    if (coupon.type === "percent") {
+      discount = (total * coupon.value) / 100;
+    } else {
+      discount = coupon.value;
+    }
+
+    // Don't allow discount > total
+    if (discount > total) discount = total;
+
+    res.status(200).json({
+      success: true,
+      message: "Coupon applied successfully",
+      discount,
+      coupon: {
+        code: coupon.code,
+        type: coupon.type,
+        value: coupon.value
+      }
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

@@ -71,7 +71,7 @@ const getVisiblePages = () => {
           params: { page, limit },
         });
 
-        const mapped = resp.data.data.map((cat) => ({
+        const mapped = resp.data.categories.map((cat: any) => ({
           id: cat._id,
           name: cat.name,
           slug: cat.slug,

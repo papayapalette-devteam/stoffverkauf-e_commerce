@@ -101,7 +101,7 @@ interface Category {
       try {
          const resp = await api.get("/api/category/get-categories");
 
-          setcategories(resp.data.data);
+          setcategories(resp.data.categories);
 
         // Optional: if backend sends total count
         if (resp.data) {

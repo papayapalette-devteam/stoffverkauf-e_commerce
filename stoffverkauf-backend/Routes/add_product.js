@@ -1,5 +1,5 @@
 const express = require('express');
-const { deleteProduct, getProducts, getSingleProduct, saveProduct, bulkUpload, getProductsByCategory, getProductsByBadge }=require("../Controllers/Products/product");
+const { deleteProduct, getProducts, getSingleProduct, saveProduct, bulkUpload, getProductsByCategory, getProductsByBadge, getBadges }=require("../Controllers/Products/product");
 
 
 const router = express.Router();
@@ -15,6 +15,8 @@ router.get("/get-product-by-id/:id", getSingleProduct);
 router.get("/get-product-by-category/:category", getProductsByCategory);
 
 router.get("/get-product-by-badge/:badge", getProductsByBadge);
+
+router.get("/get-badges", getBadges);
 
 router.post("/bulk-upload", bulkUpload);
 
