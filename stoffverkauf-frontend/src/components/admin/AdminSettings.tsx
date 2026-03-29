@@ -102,7 +102,7 @@ const AdminSettings = () => {
 
   const tabs = [
     { id: "general" as const, label: de ? "Allgemein" : "General", icon: Store },
-    { id: "tax" as const, label: de ? "Steuer" : "Tax", icon: Receipt },
+    // { id: "tax" as const, label: de ? "Steuer" : "Tax", icon: Receipt },
     { id: "appearance" as const, label: de ? "Erscheinungsbild" : "Appearance", icon: Palette },
     { id: "email" as const, label: "E-Mail", icon: Mail },
     { id: "roles" as const, label: de ? "Benutzer & Rollen" : "Users & Roles", icon: Users },

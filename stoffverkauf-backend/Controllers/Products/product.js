@@ -211,10 +211,10 @@ exports.bulkUpload = async (req, res) => {
 
     // Optional: map and validate products before insert
     const formattedProducts = products.map((p) => ({
-      name: p.name,
-      price: p.price,
+      name: p.name || "",
+      price: p.price || 0,
       salePrice: p.salePrice || 0,
-      category: p.category,
+      category: p.category || "",
       badge: p.badge || "",
       width: p.width || "",
       composition: p.composition || "",

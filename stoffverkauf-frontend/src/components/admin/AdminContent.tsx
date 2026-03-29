@@ -670,6 +670,8 @@ const handleDeletePost = async (id: string) => {
   </label>
 
   <input
+  id="hero-file-upload"
+  hidden
     type="file"
     accept="image/*"
     disabled={uploading} // disable input while uploading
@@ -681,6 +683,12 @@ const handleDeletePost = async (id: string) => {
     }}
     className={inputClass}
   />
+           <label 
+                  htmlFor="hero-file-upload" 
+                  className="inline-block text-xs bg-secondary text-foreground px-4 py-2 rounded-lg font-semibold cursor-pointer hover:bg-muted"
+                >
+                  {uploading ? (de ? "Lade hoch..." : "Uploading...") : (de ? "Bilder hochladen" : "Upload Images")}
+                </label>
 
   <div className="mt-2 relative w-full max-h-40">
     {uploading ? (

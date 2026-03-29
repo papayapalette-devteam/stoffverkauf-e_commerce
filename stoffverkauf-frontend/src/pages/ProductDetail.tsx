@@ -133,6 +133,7 @@ const ProductDetailPage = () => {
       if (res.data.success) {
         toast.success(de ? "Danke! Ihr Feedback wird nach der Prüfung veröffentlicht." : "Thank you! Your feedback will be published after review.");
         setUserComment("");
+        window.location.reload()
       }
     } catch (err: any) {
       if (err.response?.status === 401) {
