@@ -33,5 +33,7 @@ router.get('/my/:userId', authMiddleware, orderController.getMyOrders);
 // PayPal Integration
 router.post('/paypal/create', paypalController.createPaypalOrder);
 router.post('/paypal/capture', paypalController.capturePaypalOrder);
+router.get('/paypal/sync/:orderId', paypalController.syncPaypalOrder);
+router.post('/paypal/webhook', paypalController.handlePaypalWebhook);
 
 module.exports = router;

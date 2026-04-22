@@ -378,7 +378,11 @@ const Checkout = () => {
                             if (res.data.success) {
                                 setOrderPlaced(true);
                                 clearCart();
-                                toast.success(de ? "Zahlung erfolgreich!" : "Payment successful!");
+                                if (res.data.status === 'COMPLETED') {
+                                    toast.success(de ? "Zahlung erfolgreich!" : "Payment successful!");
+                                } else {
+                                    toast.info(de ? "Zahlung ausstehend (wird geprüft)" : "Payment pending (being reviewed)");
+                                }
                             }
                             }}
                             onError={(err) => {

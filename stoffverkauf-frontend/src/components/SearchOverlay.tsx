@@ -52,7 +52,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
           ]);
           
           if (prodRes.data.success) setDbProducts(prodRes.data.products);
-          if (catRes.data) {
+          if (catRes.data.success) {
             const names = catRes.data.categories
               .filter((c: any) => c.enabled)
               .map((c: any) => c.name);

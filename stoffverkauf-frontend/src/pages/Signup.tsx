@@ -45,8 +45,7 @@ const Signup = () => {
 
       if (result.success) {
         toast.success(de ? "Konto erfolgreich erstellt!" : "Account created successfully!");
-        navigate("/login");
-        // window.location.reload()
+        navigate("/profile");
       } else {
         const messages: Record<string, string> = {
           name_required: de ? "Bitte geben Sie Ihren Vor- und Nachnamen ein." : "Please enter your first and last name.",

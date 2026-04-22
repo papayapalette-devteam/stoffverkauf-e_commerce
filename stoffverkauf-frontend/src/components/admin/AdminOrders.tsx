@@ -34,9 +34,7 @@ console.log(totalOrdersStatusCount);
     setIsLoading(true);
     try {
       const res = await api.get(`/api/order/admin/all?page=${currentPage}&limit=10&search=${search}&status=${statusFilter}`);
-      console.log(res);
-      
-      if (res.data) {
+      if (res.data.success) {
         setOrders(res.data.orders);
         setTotalPages(res.data.totalPages);
         setTotalOrders(res.data.totalOrders);

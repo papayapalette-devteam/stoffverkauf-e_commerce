@@ -5,6 +5,7 @@ import { useI18n, type TranslationKey } from "@/lib/i18n";
 import { toast } from "sonner";
 import api from "../../api";
 import axios from "axios";
+import { log } from "console";
 
 const ProductGrid = () => {
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -26,8 +27,8 @@ const ProductGrid = () => {
       const fetchCategories = async () => {
         try {
           const resp = await api.get("/api/category/get-categories");
+
         
-          
   
           const mapped = resp.data.categories.map((cat) => ({
             id: cat._id,
@@ -228,23 +229,23 @@ useEffect(() => {
   </button>
 
   {/* Page Numbers */}
- {getVisiblePages().map((p, idx) =>
-  p === "..." ? (
-    <span key={`dots-${idx}`} className="px-2 py-1 text-gray-500">
-      ...
-    </span>
-  ) : (
-    <button
-      key={`page-${p}`}   // ✅ stable unique key
-      onClick={() => setPage(p as number)}
-      className={`px-3 py-1 border rounded ${
-        page === p ? "bg-[#5C00B3] text-white" : ""
-      }`}
-    >
-      {p}
-    </button>
-  )
-)}
+  {getVisiblePages().map((p, idx) =>
+    p === "..." ? (
+      <span key={idx} className="px-2 py-1 text-gray-500">
+        ...
+      </span>
+    ) : (
+      <button
+        key={p}
+        onClick={() => setPage(p as number)}
+        className={`px-3 py-1 border rounded ${
+          page === p ? "bg-[#5C00B3] text-white" : ""
+        }`}
+      >
+        {p}
+      </button>
+    )
+  )}
 
   {/* Next */}
   <button

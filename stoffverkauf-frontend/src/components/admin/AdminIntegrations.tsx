@@ -30,6 +30,7 @@ const AdminIntegrations = () => {
   const [paypalSignature, setPaypalSignature] = useState("");
   const [paypalMode, setPaypalMode] = useState<"sandbox" | "live">("sandbox");
   const [paypalClientId, setPaypalClientId] = useState("");
+  const [paypalSecret, setPaypalSecret] = useState("");
 
   const [sendcloudKey, setSendcloudKey] = useState("");
   const [sendcloudSecret, setSendcloudSecret] = useState("");
@@ -56,6 +57,7 @@ const AdminIntegrations = () => {
                 setPaypalSignature(integ.data.paypalSignature || ""); 
                 setPaypalMode(integ.data.paypalMode || "sandbox");
                 setPaypalClientId(integ.data.paypalClientId || "");
+                setPaypalSecret(integ.data.paypalSecret || "");
                 break;
               case 'sendcloud': 
                 setSendcloudKey(integ.data.sendcloudKey || ""); 
@@ -121,8 +123,8 @@ const AdminIntegrations = () => {
       icon: Euro,
       desc: de ? "PayPal-Zahlungen via REST API (Empfohlen)" : "PayPal payments via REST API (Recommended)",
       status: paypalClientId ? "connected" : "disconnected",
-      onSave: () => saveIntegration("paypal", "PayPal", { paypalClientId, paypalUsername, paypalPassword, paypalSignature, paypalMode }),
-      onDisconnect: () => disconnectIntegration("paypal", "PayPal", [setPaypalClientId, setPaypalUsername, setPaypalPassword]),
+      onSave: () => saveIntegration("paypal", "PayPal", { paypalClientId, paypalSecret, paypalUsername, paypalPassword, paypalSignature, paypalMode }),
+      onDisconnect: () => disconnectIntegration("paypal", "PayPal", [setPaypalClientId, setPaypalSecret, setPaypalUsername, setPaypalPassword]),
       fields: (
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-2">
@@ -136,7 +138,11 @@ const AdminIntegrations = () => {
             <label className="text-sm font-medium text-foreground block mb-1">Client ID</label>
             <input value={paypalClientId} onChange={(e) => setPaypalClientId(e.target.value)} placeholder="Ac-XXXX..." className={inputClass} />
           </div>
-          <p className="text-xs text-muted-foreground">{de ? "Für modernere Integrationen verwenden Sie bitte Ihre PayPal Client ID." : "For modern integrations, please use your PayPal Client ID."}</p>
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">Client Secret</label>
+            <input value={paypalSecret} onChange={(e) => setPaypalSecret(e.target.value)} type="password" placeholder="•••••••••" className={inputClass} />
+          </div>
+          <p className="text-xs text-muted-foreground">{de ? "Für modernere Integrationen verwenden Sie bitte Ihre PayPal Client ID & Secret." : "For modern integrations, please use your PayPal Client ID & Secret."}</p>
         </div>
       ),
     },

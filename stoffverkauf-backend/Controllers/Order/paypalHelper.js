@@ -7,14 +7,15 @@ const getPaypalClient = async () => {
         throw new Error('PayPal integration not found or inactive');
     }
 
-    const { paypalClientId, paypalSecret, paypalMode } = integration.data;
+    let { paypalClientId, paypalSecret, paypalMode } = integration.data;
+    paypalClientId = paypalClientId.trim();
+    paypalSecret = paypalSecret.trim();
     
     let environment;
     if (paypalMode === 'live') {
         environment = new paypal.core.LiveEnvironment(paypalClientId, paypalSecret);
     } else {
-        // environment = new paypal.core.SandboxEnvironment(paypalClientId, paypalSecret);
-        environment = new paypal.core.LiveEnvironment(paypalClientId, paypalSecret);
+        environment = new paypal.core.SandboxEnvironment(paypalClientId, paypalSecret);
     }
 
     return new paypal.core.PayPalHttpClient(environment);

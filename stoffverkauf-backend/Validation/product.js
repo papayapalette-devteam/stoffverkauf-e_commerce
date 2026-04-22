@@ -11,13 +11,13 @@ const variantSchema = Joi.object({
 });
 
 exports.productValidationSchema = Joi.object({
-  name: Joi.string().min(2).max(200).optional().allow(""),
+  name: Joi.string().min(2).max(200).required(),
 
-  price: Joi.number().min(0).optional().allow(null, ""),
+  price: Joi.number().min(0).required(),
 
   salePrice: Joi.number().min(0).allow(null, ""),
 
-  category: Joi.string().optional().allow(""),
+  category: Joi.string().required(),
 
   badge: Joi.string()
     .valid("Bestseller", "Premium", "Neu", "Angebot", "")
