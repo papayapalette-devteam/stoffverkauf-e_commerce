@@ -10,6 +10,8 @@ const getPaypalClient = async () => {
     let { paypalClientId, paypalSecret, paypalMode } = integration.data;
     paypalClientId = paypalClientId.trim();
     paypalSecret = paypalSecret.trim();
+
+
     
     let environment;
     if (paypalMode === 'live') {

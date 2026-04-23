@@ -49,7 +49,7 @@ const Checkout = () => {
   });
 
   const shipping = useMemo(() => {
-    return subtotal >= 100 ? 0 : 5.90;
+    return subtotal >= 100 ? 0 : 0.0;
   }, [subtotal]);
 
   const grandTotal = useMemo(() => {
@@ -167,7 +167,7 @@ const Checkout = () => {
   };
 
   const downloadInvoice = () => {
-    window.open(`${api.defaults.baseURL}/api/order/${orderId}/invoice`, '_blank');
+    window.open(`${api.defaults.baseURL}/api/order/document/${orderId}/invoice`, '_blank');
   };
 
   if (orderPlaced) {
@@ -288,8 +288,7 @@ const Checkout = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {[
                             { id: "paypal", label: "PayPal", desc: de ? "Schnell & Sicher" : "Fast & Secure", color: "bg-blue-500" },
-                            { id: "card", label: de ? "Kreditkarte" : "Credit Card", desc: "Stripe Payment", color: "bg-indigo-500" },
-                            { id: "klarna", label: "Klarna", desc: "Buy now, pay later", color: "bg-pink-400" },
+                           
                         ].map((method) => (
                             <label key={method.id} className={`flex flex-col p-5 border-2 rounded-2xl cursor-pointer transition-all hover:border-accent ${formData.paymentMethod === method.id ? "border-accent bg-accent/5" : "border-border"}`}>
                             <input type="radio" name="payment" checked={formData.paymentMethod === method.id} onChange={() => setFormData({...formData, paymentMethod: method.id})} className="sr-only" />
