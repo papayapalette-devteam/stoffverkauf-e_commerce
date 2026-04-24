@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Star, ShoppingBag, Heart } from "lucide-react";
-import { products } from "@/lib/products";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 import { useCart } from "@/lib/cart-context";
 import { useWishlist } from "@/lib/wishlist-context";
@@ -125,12 +124,12 @@ useEffect(() => {
     <div className="flex items-end justify-between mb-10">
       <div>
         <h2 className="font-display text-3xl lg:text-4xl font-bold text-foreground">
-          {/* {t("best.title")} */}
-          Our Premium Products
+          {t("premium.title")}
+      
         </h2>
         <p className="text-muted-foreground mt-2 font-body">
-          {/* {t("best.subtitle")} */}
-          Our customers' most premium fabrics
+          {t("premium.subtitle")}
+       
         </p>
       </div>
 

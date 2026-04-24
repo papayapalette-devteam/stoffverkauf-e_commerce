@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Star, ShoppingBag, Heart } from "lucide-react";
-import { products } from "@/lib/products";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 import { useCart } from "@/lib/cart-context";
 import { useWishlist } from "@/lib/wishlist-context";

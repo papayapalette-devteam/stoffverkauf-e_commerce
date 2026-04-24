@@ -152,6 +152,10 @@ const translations = {
   "best.title": { de: "Unsere Bestseller", en: "Our Bestsellers" },
   "best.subtitle": { de: "Die beliebtesten Stoffe unserer Kunden", en: "Our customers' most popular fabrics" },
 
+  // Premium
+  "premium.title": { de: "Unsere Premiumprodukte", en: "Our Premium Products" },
+  "premium.subtitle": { de: "Unsere hochwertigsten Stoffe", en: "Our customers' most premium fabrics" },
+
   // Category Showcase
   "cats.title": { de: "Entdecken Sie unsere Stoffwelten", en: "Explore Our Fabric Worlds" },
   "cats.subtitle": { de: "Finden Sie den perfekten Stoff für Ihr nächstes Projekt", en: "Find the perfect fabric for your next project" },
