@@ -39,6 +39,7 @@ import Samples from "./pages/Samples";
 import Returns from "./pages/Returns";
 import Legal from "./pages/Legal";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/protected_route";
 
 const queryClient = new QueryClient();
 
@@ -62,18 +63,27 @@ const App = () => (
                           <Route path="/product/:id" element={<ProductDetail />} />
                           <Route path="/login" element={<Login />} />
                           <Route path="/signup" element={<Signup />} />
+
+                           <Route element={<ProtectedRoute />}>
                           <Route path="/profile" element={<Profile />} />
                           <Route path="/checkout" element={<Checkout />} />
                           <Route path="/wishlist" element={<Wishlist />} />
                           <Route path="/orders" element={<Orders />} />
                           <Route path="/orders/:id" element={<Orders />} />
+                          </Route>
+
                           <Route path="/about" element={<About />} />
                           <Route path="/contact" element={<Contact />} />
                           <Route path="/faq" element={<FAQ />} />
                           <Route path="/blog" element={<Blog />} />
                           <Route path="/blog/:id" element={<BlogPost />} />
                           <Route path="/admin/login" element={<AdminLogin />} />
-                          <Route path="/admin/*" element={<Admin />} />
+                            <Route element={<ProtectedRoute adminOnly />}>
+
+                            <Route path="/admin/*" element={<Admin />} />
+                            
+                            </Route>
+                          
                           <Route path="/impressum" element={<Impressum />} />
                           <Route path="/datenschutz" element={<Datenschutz />} />
                           <Route path="/agb" element={<AGB />} />
