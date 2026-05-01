@@ -19,6 +19,7 @@ interface ProductVariant {
 interface ProductForm {
   _id:string;
   name: string;
+  sku: string;
   price: number;
   salePrice: number;
   category: string;
@@ -39,6 +40,7 @@ interface ProductForm {
 
 interface Csvrow {
   name: string;
+  sku?: string;
   price: number;
   salePrice?: number; // optional number
   category: string;
@@ -50,7 +52,7 @@ interface Csvrow {
 }
 
 const emptyForm: ProductForm = {
-  _id:"",name: "", price: 0, salePrice: 0, category: "Flanell", badge: "", width: "140 cm",
+  _id:"",name: "", sku: "", price: 0, salePrice: 0, category: "Flanell", badge: "", width: "140 cm",
   inStock: true, stockQty: "50", composition: "", description: "",images:[],
   seoTitle: "", seoDescription: "", seoKeywords: "",
   variants: [],rating:0,reviews:0
@@ -77,10 +79,9 @@ const AdminProducts = () => {
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showUrlImport, setShowUrlImport] = useState(false);
-  const [importUrl, setImportUrl] = useState("");
-  const [isScrapingUrl, setIsScrapingUrl] = useState(false);
-  // const [scrapedProducts, setScrapedProducts] = useState<ScrapedProduct[]>([]);
   const [scrapeError, setScrapeError] = useState("");
+  const [showBulkImageUpload, setShowBulkImageUpload] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const de = lang === "de";
 
   
@@ -433,6 +434,7 @@ const handleDelete = async (id: string, name: string) => {
 
 const products: Csvrow[] = jsonData.map((row) => ({
   name: row.name,
+  sku: row.sku || "",
   price: Number(row.price),
   salePrice: row.salePrice ? Number(row.salePrice) : undefined,
   category: row.category,
@@ -487,9 +489,71 @@ const [isLoading, setIsLoading] = useState(false);
       err instanceof Error ? err.message : "Something went wrong";
 
     toast.error(de ? "Import fehlgeschlagen" : message);
-  }finally
+    }finally
   {
     setIsLoading(false)
+  }
+};
+
+const handleBulkImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+
+  try {
+    setIsUploadingImages(true);
+    const formData = new FormData();
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    const res = await api.post("/api/products/bulk-assign-images", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    if (res.data.success) {
+      const results = res.data.results;
+      const assignedCount = results.filter((r: any) => r.status === "assigned").length;
+      const notFoundCount = results.filter((r: any) => r.status === "product_not_found").length;
+      
+      toast.success(
+        de 
+          ? `${assignedCount} Bilder zugewiesen, ${notFoundCount} SKUs nicht gefunden` 
+          : `${assignedCount} images assigned, ${notFoundCount} SKUs not found`
+      );
+      
+      // Refresh products to show new images
+      const fetchProducts = async () => {
+        const resp = await api.get("/api/products/get-product", {
+          params: { page, limit, search },
+        });
+        setproducts(resp.data.products);
+      };
+      fetchProducts();
+    }
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || "Failed to upload images");
+    } finally {
+    setIsUploadingImages(false);
+    setShowBulkImageUpload(false);
+  }
+};
+
+const handleSyncCloudinary = async () => {
+  try {
+    setIsUploadingImages(true);
+    const res = await api.get("/api/products/sync-cloudinary-images");
+    if (res.data.success) {
+      toast.success(de ? res.data.message : res.data.message);
+      // Refresh products
+      const resp = await api.get("/api/products/get-product", {
+        params: { page, limit, search },
+      });
+      setproducts(resp.data.products);
+    }
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || "Sync failed");
+  } finally {
+    setIsUploadingImages(false);
   }
 };
 
@@ -505,8 +569,8 @@ const [isLoading, setIsLoading] = useState(false);
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={de ? "Produkte suchen..." : "Search products..."}
-              className="pl-10 pr-4 py-2 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent w-48"
+              placeholder={de ? "Name oder SKU suchen..." : "Search by name or SKU..."}
+              className="pl-10 pr-4 py-2 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent w-64"
             />
           </div>
           <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="px-3 py-2 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent">
@@ -520,10 +584,17 @@ const [isLoading, setIsLoading] = useState(false);
             <FileText className="w-4 h-4" /> {de ? "CSV Import" : "CSV Import"}
           </button>
           <button
-            // onClick={() => { setShowUrlImport(!showUrlImport); setScrapedProducts([]); setScrapeError(""); setImportUrl(""); }}
-            className="flex items-center gap-2 bg-accent/10 text-accent px-3 py-2 rounded-lg text-sm font-semibold hover:bg-accent/20 transition-colors border border-accent/30"
+            onClick={() => setShowBulkImageUpload(!showBulkImageUpload)}
+            className="flex items-center gap-2 bg-indigo-500/10 text-indigo-500 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-500/20 transition-colors border border-indigo-500/30"
           >
-            <Link2 className="w-4 h-4" /> {de ? "URL Import" : "URL Import"}
+            <Palette className="w-4 h-4" /> {de ? "Bilder via SKU" : "Images via SKU"}
+          </button>
+          <button
+            onClick={handleSyncCloudinary}
+            disabled={isUploadingImages}
+            className="flex items-center gap-2 bg-amber-500/10 text-amber-500 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-amber-500/20 transition-colors border border-amber-500/30 disabled:opacity-50"
+          >
+            <Globe className="w-4 h-4" /> {de ? "Cloudinary Sync" : "Cloudinary Sync"}
           </button>
           <button
             onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); setActiveFormTab("basic"); }}
@@ -585,9 +656,9 @@ const [isLoading, setIsLoading] = useState(false);
      <button
   onClick={() => {
    const csvContent =
-  "name,price,salePrice,category,badge,width,composition,description,stockQty\n" +
-  "Beispiel Stoff,49.90,39.90,Flanell,Bestseller,140 cm,Baumwolle,Weicher Stoff,10\n" +
-  "Leinen Stoff,39.90,39.39,Leinen,Premium,150 cm,Leinen,Leichter Stoff,5\n";
+  "name,sku,price,salePrice,category,badge,width,composition,description,stockQty\n" +
+  "Beispiel Stoff,SKU-001,49.90,39.90,Flanell,Bestseller,140 cm,Baumwolle,Weicher Stoff,10\n" +
+  "Leinen Stoff,SKU-002,39.90,39.39,Leinen,Premium,150 cm,Leinen,Leichter Stoff,5\n";
     const blob = new Blob([csvContent], {
       type: "text/csv;charset=utf-8;",
     });
@@ -612,6 +683,67 @@ const [isLoading, setIsLoading] = useState(false);
     </div>
   </motion.div>
 )}
+
+      {/* Bulk Image Upload by SKU */}
+      {showBulkImageUpload && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border p-6 shadow-card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+              <Palette className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div>
+              <h3 className="font-display text-base font-bold text-foreground">
+                {de ? "Bulk Bilder-Upload via SKU" : "Bulk Image Upload via SKU"}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {de 
+                  ? "Dateiname muss der SKU entsprechen (z.B. SKU123.jpg)" 
+                  : "Filename must match the SKU (e.g., SKU123.jpg)"}
+              </p>
+            </div>
+          </div>
+
+          <div className="border-2 border-dashed border-border rounded-xl p-8 text-center mb-4">
+            <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground mb-4">
+              {de ? "Bilder hier ablegen oder auswählen" : "Drop images here or select"}
+            </p>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleBulkImageUpload}
+              className="hidden"
+              id="bulkImageInput"
+              disabled={isUploadingImages}
+            />
+            <label
+              htmlFor="bulkImageInput"
+              className="cursor-pointer bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+            >
+              {isUploadingImages ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {de ? "Verarbeite..." : "Processing..."}
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  {de ? "Bilder auswählen" : "Select Images"}
+                </>
+              )}
+            </label>
+          </div>
+          
+          <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+            <p className="text-xs text-muted-foreground">
+              💡 {de 
+                ? "Tipp: Sie können hunderte Bilder gleichzeitig auswählen. Das System lädt sie zu Cloudinary hoch und weist sie automatisch den richtigen Produkten zu." 
+                : "Tip: You can select hundreds of images at once. The system will upload them to Cloudinary and automatically assign them to the correct products."}
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* URL Import */}
       {/* {showUrlImport && (
@@ -773,6 +905,10 @@ const [isLoading, setIsLoading] = useState(false);
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-1">{de ? "Produktname" : "Product Name"}</label>
                   <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1">SKU</label>
+                  <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className={inputClass} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-1">{de ? "Regulärer Preis (€/m)" : "Regular Price (€/m)"}</label>
@@ -987,7 +1123,10 @@ const [isLoading, setIsLoading] = useState(false);
                       <img src={p?.images?.length ? p.images[0] : "/placeholder.svg"} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-secondary flex-shrink-0" />
                       <div>
                         <span className="font-medium text-foreground block">{p.name}</span>
-                        {p.badge && <span className="text-[10px] text-accent font-bold uppercase">{p.badge}</span>}
+                        <div className="flex items-center gap-2">
+                           {p.sku && <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded uppercase font-mono">{p.sku}</span>}
+                           {p.badge && <span className="text-[10px] text-accent font-bold uppercase">{p.badge}</span>}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -1017,45 +1156,46 @@ const [isLoading, setIsLoading] = useState(false);
             </tbody>
           </table>
         </div>
-        <div className="flex items-center gap-2 mt-4 p-4">
+        {products.length > 0 && totalPages > 1 && (
+          <div className="flex items-center gap-2 mt-4 p-4">
+            {/* Prev */}
+            <button
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              disabled={page === 1}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Prev
+            </button>
 
-  {/* Prev */}
-  <button
-    onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-    disabled={page === 1}
-    className="px-3 py-1 border rounded disabled:opacity-50"
-  >
-    Prev
-  </button>
+            {/* Page Numbers */}
+            {getVisiblePages().map((p, idx) =>
+              p === "..." ? (
+                <span key={idx} className="px-2 py-1 text-gray-500">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  className={`px-3 py-1 border rounded ${
+                    page === p ? "bg-[#5C00B3] text-white" : ""
+                  }`}
+                >
+                  {p}
+                </button>
+              )
+            )}
 
-  {/* Page Numbers */}
-  {getVisiblePages().map((p, idx) =>
-    p === "..." ? (
-      <span key={idx} className="px-2 py-1 text-gray-500">
-        ...
-      </span>
-    ) : (
-      <button
-        key={p}
-        onClick={() => setPage(p as number)}
-        className={`px-3 py-1 border rounded ${
-          page === p ? "bg-[#5C00B3] text-white" : ""
-        }`}
-      >
-        {p}
-      </button>
-    )
-  )}
-
-  {/* Next */}
-  <button
-    onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-    disabled={page === totalPages}
-    className="px-3 py-1 border rounded disabled:opacity-50"
-  >
-    Next
-  </button>
-</div>
+            {/* Next */}
+            <button
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={page === totalPages}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
          {isLoading && (

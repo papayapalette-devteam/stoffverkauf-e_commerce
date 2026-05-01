@@ -12,6 +12,8 @@ const variantSchema = Joi.object({
 
 exports.productValidationSchema = Joi.object({
   name: Joi.string().min(2).max(200).required(),
+  
+  sku: Joi.string().allow("").trim(),
 
   price: Joi.number().min(0).required(),
 

@@ -1,14 +1,25 @@
-const Order = require('../../Modals/Order/order');
-const Product = require('../../Modals/AddProducts/add_products');
+const Order = require("../../Modals/Order/order");
+const Product = require("../../Modals/AddProducts/add_products");
+const axios = require("axios");
 
 // Create Order
 exports.createOrder = async (req, res) => {
   try {
-    const { user, items, total, shippingAddress, paymentMethod, discount, appliedCoupon } = req.body;
+    const {
+      user,
+      items,
+      total,
+      shippingAddress,
+      paymentMethod,
+      discount,
+      appliedCoupon,
+    } = req.body;
 
     // Check if items array is empty
     if (!items || items.length === 0) {
-      return res.status(400).json({ success: false, message: "No items in order" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No items in order" });
     }
 
     const order = new Order({
@@ -20,7 +31,7 @@ exports.createOrder = async (req, res) => {
       discount: discount || 0,
       appliedCoupon: appliedCoupon || "",
       isPaid: false, // Default will wait for payment
-      status: 'processing'
+      status: "processing",
     });
 
     await order.save();
@@ -28,10 +39,10 @@ exports.createOrder = async (req, res) => {
     // If coupon was used, increment usage
     if (appliedCoupon) {
       try {
-        const Coupon = require('../../Modals/Marketing/coupon');
+        const Coupon = require("../../Modals/Marketing/coupon");
         await Coupon.findOneAndUpdate(
           { code: appliedCoupon.toUpperCase() },
-          { $inc: { uses: 1 } }
+          { $inc: { uses: 1 } },
         );
       } catch (couponErr) {
         console.error("Failed to increment coupon uses:", couponErr);
@@ -40,12 +51,12 @@ exports.createOrder = async (req, res) => {
 
     // Send confirmation email
     try {
-      const transporter = require('nodemailer').createTransport({
-        service: 'gmail',
+      const transporter = require("nodemailer").createTransport({
+        service: "gmail",
         auth: {
-          user: 'bharatproperties570@gmail.com',
-          pass: 'thpf pvbb pwfn idvf'
-        }
+          user: "bharatproperties570@gmail.com",
+          pass: "thpf pvbb pwfn idvf",
+        },
       });
 
       const mailOptions = {
@@ -64,7 +75,7 @@ exports.createOrder = async (req, res) => {
           <p>Sie können Ihre Bestellung jederzeit in Ihrem Kundenkonto verfolgen.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
           <p style="font-size: 12px; color: #888;">Stoffverkauf Weber • Ihre Experten für Textilien.</p>
-        </div>`
+        </div>`,
       };
       await transporter.sendMail(mailOptions);
     } catch (mailErr) {
@@ -74,12 +85,12 @@ exports.createOrder = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Order created successfully",
-      order
+      order,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -93,7 +104,9 @@ exports.updateOrderToPaid = async (req, res) => {
     const order = await Order.findById(id);
 
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
     order.isPaid = true;
@@ -108,7 +121,7 @@ exports.updateOrderToPaid = async (req, res) => {
     // Update product stock (simple version)
     for (const item of order.items) {
       await Product.findByIdAndUpdate(item.product, {
-        $inc: { stockQty: -item.quantity }
+        $inc: { stockQty: -item.quantity },
       });
     }
 
@@ -117,12 +130,12 @@ exports.updateOrderToPaid = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Order paid successfully",
-      updatedOrder
+      updatedOrder,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -136,7 +149,7 @@ exports.getAllOrders = async (req, res) => {
 
     // ✅ Orders list (same as before)
     const orders = await Order.find()
-      .populate('user', 'firstName lastName email')
+      .populate("user", "firstName lastName email")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -149,9 +162,9 @@ exports.getAllOrders = async (req, res) => {
       {
         $group: {
           _id: "$status",
-          count: { $sum: 1 }
-        }
-      }
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     // Convert array → object
@@ -161,7 +174,7 @@ exports.getAllOrders = async (req, res) => {
       delivered: 0,
     };
 
-    statusCounts.forEach(item => {
+    statusCounts.forEach((item) => {
       counts[item._id] = item.count;
     });
 
@@ -173,13 +186,12 @@ exports.getAllOrders = async (req, res) => {
       page,
 
       // ✅ send counts
-      statusCounts: counts
+      statusCounts: counts,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -203,12 +215,12 @@ exports.getMyOrders = async (req, res) => {
       orders,
       totalOrders,
       totalPages: Math.ceil(totalOrders / limit),
-      page
+      page,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -216,20 +228,25 @@ exports.getMyOrders = async (req, res) => {
 // Get Single Order
 exports.getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).populate('user', 'firstName lastName email');
+    const order = await Order.findById(req.params.id).populate(
+      "user",
+      "firstName lastName email",
+    );
 
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
     res.status(200).json({
       success: true,
-      order
+      order,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -243,13 +260,15 @@ exports.updateOrderStatus = async (req, res) => {
     const order = await Order.findById(id);
 
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
     if (status) order.status = status;
     if (trackingNumber) order.trackingNumber = trackingNumber;
 
-    if (status === 'delivered') {
+    if (status === "delivered") {
       order.isDelivered = true;
       order.deliveredAt = Date.now();
     }
@@ -259,12 +278,12 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Order status updated",
-      updatedOrder
+      updatedOrder,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -282,28 +301,139 @@ exports.markAsViewed = async (req, res) => {
 
 // Admin: Resend Confirmation Email
 exports.resendConfirmationEmail = async (req, res) => {
-    try {
-        const { orderId } = req.body;
-        const order = await Order.findById(orderId);
-        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+  try {
+    const { orderId } = req.body;
+    const order = await Order.findById(orderId);
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
 
-        const transporter = require('nodemailer').createTransport({
-            service: 'gmail',
-            auth: {
-                user: 'bharatproperties570@gmail.com',
-                pass: 'thpf pvbb pwfn idvf'
-            }
-        });
+    const transporter = require("nodemailer").createTransport({
+      service: "gmail",
+      auth: {
+        user: "bharatproperties570@gmail.com",
+        pass: "thpf pvbb pwfn idvf",
+      },
+    });
 
-        const mailOptions = {
-            from: '"Stoffverkauf Weber" <bharatproperties570@gmail.com>',
-            to: order.shippingAddress?.email || 'test@example.com',
-            subject: `Bestätigung Ihrer Bestellung #${order._id.toString().slice(-6)}`,
-            html: `<h1>Bestellbestätigung</h1><p>Vielen Dank für Ihren Einkauf!</p>`
-        };
-        await transporter.sendMail(mailOptions);
-        res.status(200).json({ success: true, message: "Email resent" });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+    const mailOptions = {
+      from: '"Stoffverkauf Weber" <bharatproperties570@gmail.com>',
+      to: order.shippingAddress?.email || "test@example.com",
+      subject: `Bestätigung Ihrer Bestellung #${order._id.toString().slice(-6)}`,
+      html: `<h1>Bestellbestätigung</h1><p>Vielen Dank für Ihren Einkauf!</p>`,
+    };
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ success: true, message: "Email resent" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// POST /api/order/order/:id/ship
+exports.shipOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
     }
+
+    // prevent duplicate shipping
+    if (order.status === "shipped") {
+      return res.status(400).json({ success: false, message: "Order already shipped" });
+    }
+
+    try {
+      const response = await axios.post(
+        "https://panel.sendcloud.sc/api/v3/shipments",
+        {
+          // ✅ TEST MODE: Usually bypassed account restrictions
+          test_mode: true,
+
+          // ✅ REQUIRED: sender address (Nested inside from_address in V3)
+          from_address: {
+            sender_address_id: 777941,
+          },
+
+          // ✅ FOR TESTING: Default address (Commented out dynamic address)
+          to_address: {
+            name: "Test Customer",
+            address_line_1: "Alexanderplatz 1",
+            city: "Berlin",
+            postal_code: "10178",
+            country_code: "DE",
+            /* 
+            name: `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`,
+            address_line_1: order.shippingAddress.address,
+            city: order.shippingAddress.city,
+            postal_code: order.shippingAddress.zip,
+            country_code: (order.shippingAddress.country?.toLowerCase() === 'germany' || order.shippingAddress.country?.toLowerCase() === 'deutschland') ? 'DE' : (order.shippingAddress.country?.length === 2 ? order.shippingAddress.country.toUpperCase() : 'DE'),
+            */
+          },
+
+          // ✅ REQUIRED: shipping method (V3 prefers shipping_option_code)
+          ship_with: {
+            type: "shipping_option_code",
+            properties: {
+              shipping_option_code: "dhl_de:warenpost/filial_routing",
+            },
+          },
+
+          // ✅ REQUIRED: parcels ARRAY (V3 expects weight as an object)
+          parcels: [
+            {
+              weight: {
+                value: 1.0,
+                unit: "kg",
+              },
+            },
+          ],
+        },
+        {
+          auth: {
+            username: process.env.SENDCLOUD_PUBLIC,
+            password: process.env.SENDCLOUD_SECRET,
+          },
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      const shipmentData = response.data;
+
+      // 🔹 Update order only on success
+      order.status = "shipped";
+      order.shippedAt = new Date();
+
+      // extract tracking info from JSON:API response
+      if (shipmentData?.data?.attributes?.tracking_number) {
+        order.trackingNumber = shipmentData.data.attributes.tracking_number;
+      }
+
+      await order.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Order imported to Sendcloud (Test Mode) and status updated",
+        trackingNumber: order.trackingNumber,
+      });
+
+    } catch (err) {
+      console.error("Sendcloud error details:", JSON.stringify(err.response?.data, null, 2));
+      
+      return res.status(400).json({
+        success: false,
+        message: "Sendcloud API error: " + (err.response?.data?.errors?.[0]?.detail || err.message),
+        errorDetails: err.response?.data
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };

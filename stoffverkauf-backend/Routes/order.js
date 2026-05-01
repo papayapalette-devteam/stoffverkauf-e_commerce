@@ -36,4 +36,6 @@ router.post('/paypal/capture', paypalController.capturePaypalOrder);
 router.get('/paypal/sync/:orderId', paypalController.syncPaypalOrder);
 router.post('/paypal/webhook', paypalController.handlePaypalWebhook);
 
+router.post("/order/:id/ship", orderController.shipOrder);
+
 module.exports = router;

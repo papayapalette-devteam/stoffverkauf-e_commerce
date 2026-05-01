@@ -28,7 +28,7 @@ const AdminOrders = () => {
   const [showRefundModal, setShowRefundModal] = useState<string | null>(null);
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
-console.log(totalOrdersStatusCount);
+
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -110,6 +110,22 @@ console.log(totalOrdersStatusCount);
     { status: de ? "Versandt" : "Shipped", icon: Truck, done: selected?.status === "shipped" || selected?.status === "delivered", time: selected?.trackingNumber ? "14:30 Uhr" : "—" },
     { status: de ? "Zugestellt" : "Delivered", icon: CheckCircle, done: selected?.status === "delivered", time: selected?.status === "delivered" ? "Nächster Tag" : "—" },
   ];
+
+  const handleShipped = async (order: any) => {
+    const loadingToast = toast.loading(de ? "Versand wird vorbereitet..." : "Preparing shipment...");
+    try {
+      const resp = await api.post(`/api/order/order/${order._id}/ship`);
+      if (resp.data.success) {
+        toast.success(de ? "Versand erfolgreich eingeleitet" : "Shipment initiated successfully", { id: loadingToast });
+        fetchOrders();
+      } else {
+        toast.error(resp.data.message || "Shipping failed", { id: loadingToast });
+      }
+    } catch (err) {
+      console.error("Error shipping order:", err);
+      toast.error(de ? "Fehler beim Versand" : "Error shipping order", { id: loadingToast });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -390,7 +406,15 @@ console.log(totalOrdersStatusCount);
                     <td className="p-4">
                       <select
                         value={order.status}
-                        onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                        // onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                       onChange={(e) => {
+                         const newStatus = e.target.value;
+                         if (order.status !== "shipped" && newStatus === "shipped") {
+                           handleShipped(order);
+                         } else {
+                           handleStatusChange(order._id, newStatus);
+                         }
+                       }}
                         className="text-xs bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                       >
                         {statusOptions.map((s) => (

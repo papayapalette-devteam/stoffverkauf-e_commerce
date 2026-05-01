@@ -21,6 +21,11 @@ const ProductSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    
+    sku: {
+      type: String,
+      trim: true,
+    },
 
     price: {
       type: Number,

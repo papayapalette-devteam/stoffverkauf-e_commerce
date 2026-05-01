@@ -1,6 +1,15 @@
 
 const Product =require('../../Modals/AddProducts/add_products.js');
 const { productValidationSchema } = require('../../Validation/product.js');
+const cloudinary = require("cloudinary").v2;
+const fs = require("fs/promises");
+const path = require("path");
+
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.API_KEY,
+  api_secret: process.env.API_SECRET,
+});
 
 exports.saveProduct = async (req, res) => {
   try {
@@ -78,7 +87,8 @@ exports.getProducts = async (req, res) => {
       ? {
           $or: [
             { name: { $regex: search, $options: "i" } },
-            { category: { $regex: search, $options: "i" } }
+            { category: { $regex: search, $options: "i" } },
+            { sku: { $regex: search, $options: "i" } }
           ]
         }
       : {};
@@ -205,6 +215,9 @@ exports.bulkUpload = async (req, res) => {
   try {
     const { products } = req.body;
 
+    console.log(products);
+    
+
     if (!products || !Array.isArray(products)) {
       return res.status(400).json({ message: "Invalid products data" });
     }
@@ -212,6 +225,7 @@ exports.bulkUpload = async (req, res) => {
     // Optional: map and validate products before insert
     const formattedProducts = products.map((p) => ({
       name: p.name,
+      sku: p.sku || "",
       price: p.price,
       salePrice: p.salePrice || 0,
       category: p.category,
@@ -254,6 +268,129 @@ exports.getBadges = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+exports.bulkAssignImagesBySKU = async (req, res) => {
+  try {
+    const files = req.files;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ success: false, message: "No files uploaded" });
+    }
+
+    const fileArray = Array.isArray(files) ? files : [files];
+    const results = [];
+
+    for (const file of fileArray) {
+      try {
+        const originalName = path.parse(file.originalname).name.trim();
+        
+        // Upload to Cloudinary
+        const uploadResult = await cloudinary.uploader.upload(file.path, {
+          folder: "products",
+          public_id: originalName,
+          use_filename: true,
+          unique_filename: false,
+          overwrite: true,
+        });
+
+        // Try to find product by exact SKU or numeric part
+        let sku = originalName;
+        let product = await Product.findOne({ sku: { $regex: new RegExp(`^${sku}$`, "i") } });
+
+        if (!product) {
+          const numericPart = sku.match(/\d+/)?.[0];
+          if (numericPart) {
+            sku = numericPart;
+            product = await Product.findOne({ sku: sku });
+          }
+        }
+        
+        if (product) {
+          if (!product.images.includes(uploadResult.secure_url)) {
+            product.images.push(uploadResult.secure_url);
+            await product.save();
+          }
+          results.push({ sku, status: "assigned", url: uploadResult.secure_url });
+        } else {
+          results.push({ sku, status: "product_not_found", url: uploadResult.secure_url, message: `No product found with SKU: ${sku}` });
+        }
+
+      } catch (err) {
+        console.error(`Error processing file ${file.originalname}:`, err);
+        results.push({ filename: file.originalname, status: "error", message: err.message });
+      } finally {
+        // Remove temp file
+        try {
+          await fs.unlink(file.path);
+        } catch (unlinkErr) {
+          console.error("Error deleting temp file:", unlinkErr);
+        }
+      }
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Bulk image processing complete",
+      results 
+    });
+  } catch (error) {
+    console.error("Bulk assign main error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.syncImagesFromCloudinary = async (req, res) => {
+  try {
+    const results = [];
+    let next_cursor = null;
+
+    // Use a simpler search or resource listing
+    // Note: Admin API (cloudinary.api.resources) has stricter rate limits than Search API
+    const response = await cloudinary.search
+      .expression('resource_type:image')
+      .max_results(500)
+      .execute();
+
+    for (const resource of response.resources) {
+      // public_id like "products/P1130366_emxw9q"
+      const publicId = resource.public_id.split('/').pop().trim();
+      const url = resource.secure_url;
+
+      if (!publicId) continue;
+
+      // Try exact match then numeric match
+      let sku = publicId;
+      let product = await Product.findOne({ sku: { $regex: new RegExp(`^${sku}$`, "i") } });
+
+      if (!product) {
+        const numericPart = sku.match(/\d+/)?.[0];
+        if (numericPart) {
+          sku = numericPart;
+          product = await Product.findOne({ sku: sku });
+        }
+      }
+      
+      if (product) {
+        if (!product.images.includes(url)) {
+          product.images.push(url);
+          await product.save();
+          results.push({ sku, status: "assigned", url });
+        } else {
+          results.push({ sku, status: "already_exists", url });
+        }
+      }
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: `Sync complete. ${results.filter(r => r.status === "assigned").length} new images assigned.`,
+      count: results.length,
+      results 
+    });
+  } catch (error) {
+    console.error("Cloudinary sync error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
