@@ -3,7 +3,7 @@ import axios from "axios";
 const api = axios.create({
   // baseURL: "http://localhost:5000",
   // baseURL: "https://stoffverkauf-e-commerce-1.onrender.com"
-  baseURL: "https://unwrap-category-theology-put.trycloudflare.com"
+  baseURL: "https://pieces-circumstances-newspapers-hansen.trycloudflare.com"
 });
 
 api.interceptors.request.use((config) => {
