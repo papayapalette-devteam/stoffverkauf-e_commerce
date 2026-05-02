@@ -23,7 +23,6 @@ app.use('/images', express.static(path.join(__dirname, 'images')));
 /* ---------- CORS (VERY IMPORTANT ORDER) ---------- */
 const corsOptions = {
   origin: [
-    "https://admin.made4ever.in",
     "https://stoffverkauf-e-commerce-w7li.vercel.app",
     "http://localhost:8080",
     "http://localhost:8081",

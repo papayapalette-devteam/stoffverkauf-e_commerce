@@ -96,7 +96,12 @@ exports.getProducts = async (req, res) => {
     const totalProducts = await Product.countDocuments(filter);
 
     const products = await Product.find(filter)
-      .sort({ createdAt: -1 })
+      // .sort({ createdAt: -1 })
+        .sort({
+    images: -1,       // images वाले पहले (non-null / non-empty)
+    createdAt: -1,   // फिर latest
+  })
+
       .skip(skip)
       .limit(limit);
 
