@@ -26,7 +26,6 @@ const corsOptions = {
     "https://stoffverkauf-e-commerce-w7li.vercel.app",
     "http://localhost:8080",
     "http://localhost:8081",
-    "http://13.60.202.138:5000",
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"],
   credentials: true,
