@@ -63,6 +63,7 @@ const OrderSchema = new mongoose.Schema({
   },
   deliveredAt: Date,
   trackingNumber: String,
+  sendcloudShipmentId: String,
   discount: {
     type: Number,
     default: 0

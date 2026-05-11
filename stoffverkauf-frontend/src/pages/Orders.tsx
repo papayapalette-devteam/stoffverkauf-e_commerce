@@ -43,7 +43,7 @@ const Orders = () => {
   }, [user]);
 
   const handleDownloadInvoice = (orderId: string) => {
-    window.open(`${api.defaults.baseURL}/api/order/${orderId}/invoice`, '_blank');
+    window.open(`${api.defaults.baseURL}/api/order/document/${orderId}/invoice`, '_blank');
   };
 
   return (
@@ -97,13 +97,21 @@ const Orders = () => {
                               <p className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleDateString(de ? "de-DE" : "en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
                            </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                            <button 
                             onClick={() => handleDownloadInvoice(order._id)}
                             className="flex items-center gap-2 bg-secondary text-foreground px-4 py-2 rounded-xl text-sm font-bold hover:bg-muted transition-colors border border-border"
                            >
                              <Download className="w-4 h-4" /> {de ? "Rechnung" : "Invoice"}
                            </button>
+                           {order.trackingNumber && (
+                             <button 
+                              onClick={() => window.open(`https://tracking.sendcloud.sc/forward?carrier=dhl_de&code=${order.trackingNumber}&destination=${order.shippingAddress?.zip}`, '_blank')}
+                              className="flex items-center gap-2 bg-accent text-accent-foreground px-4 py-2 rounded-xl text-sm font-bold hover:bg-accent/90 transition-colors"
+                             >
+                               <Truck className="w-4 h-4" /> {de ? "Verfolgen" : "Track Order"}
+                             </button>
+                           )}
                         </div>
                       </div>
 
@@ -129,9 +137,16 @@ const Orders = () => {
                            </div>
                            {order.trackingNumber && (
                               <div className="hidden sm:block">
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 font-bold">{de ? "Sendungsverfolgung" : "Tracking"}</p>
-                                <p className="text-sm font-mono text-accent">{order.trackingNumber}</p>
-                              </div>
+                                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 font-bold">{de ? "Sendungsverfolgung" : "Tracking"}</p>
+                                 <a 
+                                  href={`https://tracking.sendcloud.sc/forward?carrier=dhl_de&code=${order.trackingNumber}&destination=${order.shippingAddress?.zip}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-mono text-accent hover:underline flex items-center gap-1"
+                                 >
+                                   {order.trackingNumber} <ExternalLink className="w-3 h-3" />
+                                 </a>
+                               </div>
                            )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">

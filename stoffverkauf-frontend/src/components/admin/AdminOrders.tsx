@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Search, Eye, Truck, Package, CheckCircle, XCircle, Download, RefreshCcw, Mail, FileText, Clock, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Search, Eye, Truck, Package, CheckCircle, XCircle, Download, RefreshCcw, Mail, FileText, Clock, X, ChevronLeft, ChevronRight, Loader2, Printer, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../../api";
 
@@ -28,6 +28,13 @@ const AdminOrders = () => {
   const [showRefundModal, setShowRefundModal] = useState<string | null>(null);
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
+  
+  // Shipping Modal states
+  const [shippingModalOrder, setShippingModalOrder] = useState<any | null>(null);
+  const [shipWeight, setShipWeight] = useState("1");
+  const [shipLength, setShipLength] = useState("30");
+  const [shipWidth, setShipWidth] = useState("20");
+  const [shipHeight, setShipHeight] = useState("5");
 
 
   const fetchOrders = async () => {
@@ -111,24 +118,75 @@ const AdminOrders = () => {
     { status: de ? "Zugestellt" : "Delivered", icon: CheckCircle, done: selected?.status === "delivered", time: selected?.status === "delivered" ? "Nächster Tag" : "—" },
   ];
 
-  const handleShipped = async (order: any) => {
+  const handleShipped = (order: any) => {
+    setShippingModalOrder(order);
+  };
+
+  const confirmShipping = async () => {
+    if (!shippingModalOrder) return;
     const loadingToast = toast.loading(de ? "Versand wird vorbereitet..." : "Preparing shipment...");
     try {
-      const resp = await api.post(`/api/order/order/${order._id}/ship`);
+      const resp = await api.post(`/api/order/order/${shippingModalOrder._id}/ship`, {
+        weight: parseFloat(shipWeight),
+        length: parseFloat(shipLength),
+        width: parseFloat(shipWidth),
+        height: parseFloat(shipHeight),
+      });
       if (resp.data.success) {
         toast.success(de ? "Versand erfolgreich eingeleitet" : "Shipment initiated successfully", { id: loadingToast });
+        setShippingModalOrder(null);
         fetchOrders();
       } else {
         toast.error(resp.data.message || "Shipping failed", { id: loadingToast });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error shipping order:", err);
-      toast.error(de ? "Fehler beim Versand" : "Error shipping order", { id: loadingToast });
+      toast.error(err.response?.data?.message || (de ? "Fehler beim Versand" : "Error shipping order"), { id: loadingToast });
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* Shipping Details Modal */}
+      {shippingModalOrder && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-lg font-bold text-foreground">{de ? "Versanddetails" : "Shipping Details"}: ...{shippingModalOrder._id.slice(-6)}</h3>
+              <button onClick={() => setShippingModalOrder(null)}><X className="w-5 h-5 text-muted-foreground" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1">{de ? "Gewicht (kg)" : "Weight (kg)"}</label>
+                  <input type="number" step="0.1" value={shipWeight} onChange={e => setShipWeight(e.target.value)} className="w-full px-4 py-2 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1">{de ? "Länge (cm)" : "Length (cm)"}</label>
+                  <input type="number" value={shipLength} onChange={e => setShipLength(e.target.value)} className="w-full px-4 py-2 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1">{de ? "Breite (cm)" : "Width (cm)"}</label>
+                  <input type="number" value={shipWidth} onChange={e => setShipWidth(e.target.value)} className="w-full px-4 py-2 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1">{de ? "Höhe (cm)" : "Height (cm)"}</label>
+                  <input type="number" value={shipHeight} onChange={e => setShipHeight(e.target.value)} className="w-full px-4 py-2 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={confirmShipping} className="flex-1 bg-accent text-accent-foreground py-2.5 rounded-lg text-sm font-semibold hover:bg-accent/90">
+                  {de ? "Label erstellen" : "Create Label"}
+                </button>
+                <button onClick={() => setShippingModalOrder(null)} className="flex-1 bg-secondary text-foreground py-2.5 rounded-lg text-sm font-semibold">
+                  {de ? "Abbrechen" : "Cancel"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Refund Modal */}
       {showRefundModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -368,6 +426,33 @@ const AdminOrders = () => {
       </span>
     </div>
 
+    {selected.trackingNumber && (
+      <div className="pt-4 mt-4 border-t border-border space-y-3">
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground font-semibold flex items-center gap-2">
+            <Truck className="w-4 h-4 text-accent" /> Tracking
+          </span>
+          <a 
+            href={`https://tracking.sendcloud.sc/forward?carrier=dhl_de&code=${selected.trackingNumber}&destination=${selected.shippingAddress?.zip}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent font-mono font-bold hover:underline flex items-center gap-1"
+          >
+            {selected.trackingNumber} <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground">Label</span>
+          <button 
+            onClick={() => window.open(`${api.defaults.baseURL}/api/order/order/${selected._id}/label`, '_blank')}
+            className="text-accent hover:underline flex items-center gap-1 font-semibold"
+          >
+            <Printer className="w-4 h-4" /> Download Label
+          </button>
+        </div>
+      </div>
+    )}
+
   </div>
 </div>
 
@@ -449,6 +534,14 @@ const AdminOrders = () => {
                         <button onClick={() => setShowRefundModal(order._id)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Rückerstattung" : "Refund"}>
                           <RefreshCcw className="w-4 h-4 text-muted-foreground" />
                         </button>
+                        {(order.status === "shipped" || order.status === "delivered") && (
+                          <button 
+                            onClick={() => window.open(`${api.defaults.baseURL}/api/order/order/${order._id}/label`, '_blank')} 
+                            className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Versandetikett" : "Shipping Label"}
+                          >
+                            <Printer className="w-4 h-4 text-accent" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
