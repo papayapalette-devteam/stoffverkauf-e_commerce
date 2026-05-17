@@ -98,8 +98,8 @@ exports.getProducts = async (req, res) => {
     const products = await Product.find(filter)
       // .sort({ createdAt: -1 })
         .sort({
-    images: -1,       // images वाले पहले (non-null / non-empty)
-    createdAt: -1,   // फिर latest
+    images: -1,       
+    createdAt: -1,   
   })
 
       .skip(skip)
@@ -139,6 +139,7 @@ exports.getSingleProduct = async (req, res) => {
 exports.getProductsByCategory = async (req, res) => {
   try {
     const category = req.params.category;
+   
     const page = parseInt(req.query.page) || 1;     // default to page 1
     const limit = parseInt(req.query.limit) || 10;  // default 10 products per page
     const skip = (page - 1) * limit;
@@ -146,8 +147,15 @@ exports.getProductsByCategory = async (req, res) => {
     // Count total products in this category
     const totalProducts = await Product.countDocuments({ category: category });
 
+    
+
     // Fetch products for the current page
     const products = await Product.find({ category: category })
+      .sort({
+    images: -1,       
+    createdAt: -1,   
+  })
+
       .skip(skip)
       .limit(limit);
 
@@ -181,6 +189,11 @@ exports.getProductsByBadge = async (req, res) => {
 
     // Fetch products for the current page
     const products = await Product.find({ badge: badge })
+      .sort({
+    images: -1,       
+    createdAt: -1,   
+  })
+
       .skip(skip)
       .limit(limit);
 
