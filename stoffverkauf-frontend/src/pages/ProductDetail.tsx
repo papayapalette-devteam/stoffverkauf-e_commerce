@@ -277,6 +277,9 @@ useEffect(() => {
   fetchProducts();
 }, [product, page, limit]);
 
+console.log(totalPages);
+
+
 
 
 
@@ -545,6 +548,45 @@ useEffect(() => {
               </div>
             </motion.div>
           )}
+                        <div className="flex items-center gap-2 mt-4 p-4" style={{ display: totalPages <= 1 ? "none" : "flex" }}>
+
+  {/* Prev */}
+  <button
+    onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+    disabled={page === 1}
+    className="px-3 py-1 border rounded disabled:opacity-50"
+  >
+    Prev
+  </button>
+
+  {/* Page Numbers */}
+  {getVisiblePages().map((p, idx) =>
+    p === "..." ? (
+      <span key={idx} className="px-2 py-1 text-gray-500">
+        ...
+      </span>
+    ) : (
+      <button
+        key={p}
+        onClick={() => setPage(p as number)}
+        className={`px-3 py-1 border rounded ${
+          page === p ? "bg-[#5C00B3] text-white" : ""
+        }`}
+      >
+        {p}
+      </button>
+    )
+  )}
+
+  {/* Next */}
+  <button
+    onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+    disabled={page === totalPages}
+    className="px-3 py-1 border rounded disabled:opacity-50"
+  >
+    Next
+  </button>
+</div>
 
           {/* Feedback Section */}
           <div className="mt-16 border-t border-border pt-12">
