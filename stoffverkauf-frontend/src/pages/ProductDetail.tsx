@@ -148,8 +148,10 @@ const ProductDetailPage = () => {
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch product by ID
+  const [productLoading, setProductLoading] = useState<boolean>(false);
   const fetchProductById = async (id: string) => {
     try {
+      setProductLoading(true);
       const response = await api.get(`/api/products/get-product-by-id/${id}`);
       const data: ProductForm = response.data;
       setProduct(data);
@@ -170,6 +172,10 @@ const ProductDetailPage = () => {
         toast.error("An unexpected error occurred while fetching product");
         console.error(err);
       }
+    }
+    finally
+    {
+      setProductLoading(false);
     }
   };
 
@@ -277,30 +283,70 @@ useEffect(() => {
   fetchProducts();
 }, [product, page, limit]);
 
-console.log(totalPages);
 
 
 
 
 
-  if (!product || !details) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="font-display text-2xl font-bold text-foreground mb-4">
-              {lang === "de" ? "Produkt nicht gefunden" : "Product not found"}
-            </h1>
-            <Link to="/" className="text-primary underline">{t("detail.back")}</Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
 
+  // if (!product || !details) {
+  //   return (
+  //     <div className="min-h-screen flex flex-col">
+  //       <Navbar />
+  //       <main className="flex-1 flex items-center justify-center">
+  //         <div className="text-center">
+  //           <h1 className="font-display text-2xl font-bold text-foreground mb-4">
+  //             {lang === "de" ? "Produkt nicht gefunden" : "Product not found"}
+  //           </h1>
+  //           <Link to="/" className="text-primary underline">{t("detail.back")}</Link>
+  //         </div>
+  //       </main>
+  //       <Footer />
+  //     </div>
+  //   );
+  // }
 
+if (productLoading) {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+
+      <main className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg font-medium text-foreground">
+            {lang === "de" ? "Wird geladen..." : "Loading..."}
+          </p>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+if (!product || !details) {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+
+      <main className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="font-display text-2xl font-bold text-foreground mb-4">
+            {lang === "de"
+              ? "Produkt nicht gefunden"
+              : "Product not found"}
+          </h1>
+
+          <Link to="/" className="text-primary underline">
+            {t("detail.back")}
+          </Link>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
 
 
   // ===== Fixed handleAddToCart =====
