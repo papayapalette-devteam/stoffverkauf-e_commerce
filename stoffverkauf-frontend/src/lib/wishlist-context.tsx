@@ -22,7 +22,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const refreshWishlist = useCallback(async () => {
     if (!isLoggedIn || !token) return;
     try {
-      const res = await api.get("api/wishlist/", {
+      const res = await api.get("/api/wishlist/", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data.success) {
@@ -43,7 +43,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     try {
       const res = await api.post(
-        "api/wishlist/add",
+        "/api/wishlist/add",
         { productId: product._id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -60,7 +60,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     try {
       const res = await api.post(
-        "api/wishlist/remove",
+        "/api/wishlist/remove",
         { productId: id },
         { headers: { Authorization: `Bearer ${token}` } }
       );

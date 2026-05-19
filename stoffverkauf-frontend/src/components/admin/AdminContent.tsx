@@ -204,7 +204,7 @@ const getVisiblePages = () => {
 
 const handleGetPosts = async () => {
   try {
-    const res = await api.get("api/blog/get-blogs",{params:{page,limit}});
+    const res = await api.get("/api/blog/get-blogs",{params:{page,limit}});
 
     const data = res.data.posts
 ;
@@ -269,7 +269,7 @@ const handleSavePost = async () => {
 
     if (editingPost) {
       // Update existing post
-      const res = await api.put(`api/blog/update-blog/${editingPost._id}`, postForm);
+      const res = await api.put(`/api/blog/update-blog/${editingPost._id}`, postForm);
       data = res.data;
       setBlogPosts((prev) =>
         prev.map((p) => (p._id === editingPost._id ? data : p))
@@ -277,7 +277,7 @@ const handleSavePost = async () => {
       toast.success(de ? "Beitrag aktualisiert" : "Post updated");
     } else {
       // Create new post
-      const res = await api.post("api/blog/add-blog", postForm);
+      const res = await api.post("/api/blog/add-blog", postForm);
       data = res.data;
       // setBlogPosts(data);
       toast.success(de ? "Beitrag erstellt" : "Post created");
@@ -297,7 +297,7 @@ const handleDeletePost = async (id: string) => {
     const post = blogPosts.find(p => p._id === id);
 
     // Call backend delete API
-    await api.delete(`api/blog/delete-blog/${id}`);
+    await api.delete(`/api/blog/delete-blog/${id}`);
 
     // Update UI after successful deletion
     setBlogPosts(prev => prev.filter(p => p._id !== id));

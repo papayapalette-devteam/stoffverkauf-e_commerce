@@ -8,7 +8,7 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   // Check standard token first (Admin or simple login)
-  let token = localStorage.getItem("token");
+  let token = localStorage.getItem("weber_admin_token");
 
   // If not found, check the user storage key
   if (!token) {

@@ -10,7 +10,7 @@ export const uploadFiles = async (files: File[]) => {
       formData.append("files", file); // must match backend field name
     });
 
-    const res = await api.post("api/upload/upload-files", formData, {
+    const res = await api.post("/api/upload/upload-files", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },

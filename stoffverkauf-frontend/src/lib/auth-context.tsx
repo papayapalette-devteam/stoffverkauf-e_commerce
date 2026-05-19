@@ -25,29 +25,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const STORAGE_KEY = "weber_auth";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-
-  // Load user + token from localStorage
-  useEffect(() => {
+  const [user, setUser] = useState<AuthUser | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const data = JSON.parse(stored);
-        setUser(data.user);
-        setToken(data.token);
-        // Set default axios header
-        api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+        if (data.token) {
+          api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+        }
+        return data.user;
       }
     } catch {}
-  }, []);
+    return null;
+  });
+
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        return data.token;
+      }
+    } catch {}
+    return null;
+  });
 
   // Save user + token to localStorage
   useEffect(() => {
     if (user && token) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ user, token }));
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    } else {
+    } else if (!user && !token) {
       localStorage.removeItem(STORAGE_KEY);
       delete api.defaults.headers.common["Authorization"];
     }

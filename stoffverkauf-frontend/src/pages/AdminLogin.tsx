@@ -13,7 +13,7 @@ export const ADMIN_TOKEN_KEY = "weber_admin_token";
 
 export const isAdminAuthenticated = () => {
   try {
-    return !!localStorage.getItem("token");
+    return !!localStorage.getItem(ADMIN_TOKEN_KEY);
   } catch {
     return false;
   }
@@ -51,7 +51,7 @@ const AdminLogin = () => {
         }
 
         const token = res.data.token;
-        localStorage.setItem("token", token);
+        localStorage.setItem(ADMIN_TOKEN_KEY, token);
         localStorage.setItem(ADMIN_SESSION_KEY, "true");
         
         // Set authorization header for future requests

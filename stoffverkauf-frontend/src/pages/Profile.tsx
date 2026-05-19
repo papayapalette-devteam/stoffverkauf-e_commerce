@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, MapPin, Edit3, Package, Heart, Settings, LogOut } from "lucide-react";
+import { User, Mail, Phone, MapPin, Edit3, Package, Heart, Settings, LogOut, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -13,7 +13,7 @@ import api from "../../api"
 
 const Profile = () => {
   const { lang } = useI18n();
-  const { user, isLoggedIn, logout } = useAuth();
+  const { user, isLoggedIn, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
   const de = lang === "de";
   const [activeTab, setActiveTab] = useState("profile");
@@ -51,7 +51,7 @@ const handleChange = (e) => {
 
 const handleSave = async () => {
   try {
-    const res = await api.put("api/user/update-user", {
+    const res = await api.put("/api/user/update-user", {
       ...formData,
       phone: formData.phone ? Number(formData.phone) : null,
     });
@@ -64,6 +64,7 @@ const handleSave = async () => {
     }
 
     toast.success("Profile updated!");
+    updateProfile(data.user);
     setIsEditOpen(false);
 
   } catch (err) {
@@ -102,9 +103,18 @@ const handleSave = async () => {
       <Navbar />
       <main className="flex-1 py-12">
         <div className="container mx-auto px-4 lg:px-8">
-          <h1 className="font-display text-3xl font-bold text-foreground mb-8">
-            {de ? "Mein Konto" : "My Account"}
-          </h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <h1 className="font-display text-3xl font-bold text-foreground">
+              {de ? "Mein Konto" : "My Account"}
+            </h1>
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-background hover:bg-secondary text-foreground text-sm font-semibold transition-colors shadow-sm"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              {de ? "Weiter einkaufen" : "Continue Shopping"}
+            </Link>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Sidebar */}
@@ -291,7 +301,7 @@ const handleSave = async () => {
 
       <div className="flex justify-end gap-3 mt-6">
         <button
-         
+          onClick={() => setIsEditOpen(false)}
           className="px-4 py-2 text-sm rounded-lg border"
         >
           {de ? "Abbrechen" : "Cancel"}

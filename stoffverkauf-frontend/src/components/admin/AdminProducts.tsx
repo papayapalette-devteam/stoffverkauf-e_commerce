@@ -469,7 +469,7 @@ const [isLoading, setIsLoading] = useState(false);
   try {
     setIsLoading(true)
     // ✅ Send as { products: [...] } to match backend
-    const res = await api.post("api/products/bulk-upload", {
+    const res = await api.post("/api/products/bulk-upload", {
       products: parsedProducts,
     });
 
@@ -583,19 +583,19 @@ const handleSyncCloudinary = async () => {
           >
             <FileText className="w-4 h-4" /> {de ? "CSV Import" : "CSV Import"}
           </button>
-          <button
+          {/* <button
             onClick={() => setShowBulkImageUpload(!showBulkImageUpload)}
             className="flex items-center gap-2 bg-indigo-500/10 text-indigo-500 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-500/20 transition-colors border border-indigo-500/30"
           >
             <Palette className="w-4 h-4" /> {de ? "Bilder via SKU" : "Images via SKU"}
-          </button>
-          <button
+          </button> */}
+          {/* <button
             onClick={handleSyncCloudinary}
             disabled={isUploadingImages}
             className="flex items-center gap-2 bg-amber-500/10 text-amber-500 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-amber-500/20 transition-colors border border-amber-500/30 disabled:opacity-50"
           >
             <Globe className="w-4 h-4" /> {de ? "Cloudinary Sync" : "Cloudinary Sync"}
-          </button>
+          </button> */}
           <button
             onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); setActiveFormTab("basic"); }}
             className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-opacity"

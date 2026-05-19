@@ -104,6 +104,7 @@ const updateUser = async (req, res) => {
   try {
     const userId = req.user.id; // ✅ from JWT middleware
 
+console.log(userId);
 
 
 
