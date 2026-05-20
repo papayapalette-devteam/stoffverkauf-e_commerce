@@ -80,7 +80,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = useCallback(() => setItems([]), []);
 
-  const total = items.reduce((sum, item) => sum + item.salePrice * item.quantity, 0);
+  const total = items.reduce((sum, item) => sum + (item.salePrice || item.price) * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (

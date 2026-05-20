@@ -97,7 +97,7 @@ const CartDrawer = () => {
                             </button>
                           </div>
                           <p className="font-body font-bold text-sm text-foreground">
-                            {(item.salePrice * item.quantity).toFixed(2)} €
+                            {((item.salePrice || item.price) * item.quantity).toFixed(2)} €
                           </p>
                         </div>
                       </div>

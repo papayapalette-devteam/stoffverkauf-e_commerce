@@ -55,7 +55,7 @@ const Wishlist = () => {
                   </Link>
                   <div className="p-4 space-y-2">
                     <h3 className="font-semibold text-foreground text-sm">{item.name}</h3>
-                    <p className="font-bold text-foreground">{item.price.toFixed(2)} €</p>
+                    <p className="font-bold text-foreground">{(item.salePrice || item.price).toFixed(2)} €</p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => addItem(item)}

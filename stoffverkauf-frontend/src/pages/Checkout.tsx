@@ -126,7 +126,7 @@ const Checkout = () => {
           product: item._id,
           name: item.name,
           quantity: item.quantity,
-          price: item.price
+          price: item.salePrice || item.price
         })),
         total: grandTotal,
         discount: discount,
@@ -320,9 +320,9 @@ const Checkout = () => {
                             <img src={item.images[0]} alt={item.name} className="w-20 h-20 rounded-xl object-cover" />
                             <div className="flex-1">
                                 <p className="font-bold text-foreground">{item.name}</p>
-                                <p className="text-sm text-muted-foreground">{item.quantity}x {item.price.toFixed(2)} €</p>
+                                <p className="text-sm text-muted-foreground">{item.quantity}x {(item.salePrice || item.price).toFixed(2)} €</p>
                             </div>
-                            <p className="font-bold text-foreground">{(item.price * item.quantity).toFixed(2)} €</p>
+                            <p className="font-bold text-foreground">{((item.salePrice || item.price) * item.quantity).toFixed(2)} €</p>
                             </div>
                         ))}
                         </div>

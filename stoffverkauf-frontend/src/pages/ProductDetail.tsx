@@ -513,7 +513,7 @@ if (!product || !details) {
               {/* Price */}
               <div className="flex items-baseline gap-2 mb-2">
                 <span className="font-display text-3xl font-bold text-foreground">
-                  {product.salePrice.toFixed(2)} €
+                  {(product.salePrice || product.price).toFixed(2)} €
                 </span>
                 <span className="text-sm text-muted-foreground">{t("detail.perMeter")}</span>
               </div>
@@ -554,7 +554,7 @@ if (!product || !details) {
                   className="flex-1 bg-primary text-primary-foreground py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
                 >
                   <ShoppingBag className="w-5 h-5" />
-                  {t("detail.addToCart")} — {(product.salePrice * meters).toFixed(2)} €
+                  {t("detail.addToCart")} — {((product.salePrice || product.price) * meters).toFixed(2)} €
                 </motion.button>
               </div>
 
