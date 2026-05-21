@@ -36,6 +36,12 @@ const AdminOrders = () => {
   const [shipWidth, setShipWidth] = useState("20");
   const [shipHeight, setShipHeight] = useState("5");
 
+  // Loaders and locks states
+  const [updatingOrderIds, setUpdatingOrderIds] = useState<string[]>([]);
+  const [sendingNotificationIds, setSendingNotificationIds] = useState<string[]>([]);
+  const [processingRefund, setProcessingRefund] = useState(false);
+  const [processingShipping, setProcessingShipping] = useState(false);
+
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -59,7 +65,9 @@ const AdminOrders = () => {
   }, [currentPage, search, statusFilter]);
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
+    if (updatingOrderIds.includes(orderId)) return;
     try {
+      setUpdatingOrderIds(prev => [...prev, orderId]);
       const res = await api.patch(`/api/order/admin/${orderId}`, { status: newStatus });
       if (res.data.success) {
         const statusLabel = statusOptions.find((s) => s.value === newStatus);
@@ -68,15 +76,21 @@ const AdminOrders = () => {
       }
     } catch (err) {
       toast.error("Failed to update status");
+    } finally {
+      setUpdatingOrderIds(prev => prev.filter(x => x !== orderId));
     }
   };
 
   const handleSendNotification = async (orderId: string) => {
+    if (sendingNotificationIds.includes(orderId)) return;
     try {
+      setSendingNotificationIds(prev => [...prev, orderId]);
       await api.post(`/api/order/admin/resend-confirmation`, { orderId });
       toast.success(de ? `Bestätigungs-Mail für ${orderId} gesendet` : `Confirmation email sent for ${orderId}`);
     } catch (err) {
       toast.error("Failed to send email");
+    } finally {
+      setSendingNotificationIds(prev => prev.filter(x => x !== orderId));
     }
   };
 
@@ -90,7 +104,9 @@ const AdminOrders = () => {
 
   const handleRefund = async () => {
     if (!refundAmount) { toast.error(de ? "Bitte Rückerstattungsbetrag eingeben" : "Please enter refund amount"); return; }
+    if (processingRefund) return;
     try {
+      setProcessingRefund(true);
       const res = await api.post(`/api/order/admin/refund`, { 
         orderId: showRefundModal, 
         amount: parseFloat(refundAmount),
@@ -105,6 +121,8 @@ const AdminOrders = () => {
       }
     } catch (err) {
       toast.error("Refund failed");
+    } finally {
+      setProcessingRefund(false);
     }
   };
 
@@ -123,9 +141,10 @@ const AdminOrders = () => {
   };
 
   const confirmShipping = async () => {
-    if (!shippingModalOrder) return;
+    if (!shippingModalOrder || processingShipping) return;
     const loadingToast = toast.loading(de ? "Versand wird vorbereitet..." : "Preparing shipment...");
     try {
+      setProcessingShipping(true);
       const resp = await api.post(`/api/order/order/${shippingModalOrder._id}/ship`, {
         weight: parseFloat(shipWeight),
         length: parseFloat(shipLength),
@@ -142,6 +161,8 @@ const AdminOrders = () => {
     } catch (err: any) {
       console.error("Error shipping order:", err);
       toast.error(err.response?.data?.message || (de ? "Fehler beim Versand" : "Error shipping order"), { id: loadingToast });
+    } finally {
+      setProcessingShipping(false);
     }
   };
 
@@ -153,9 +174,9 @@ const AdminOrders = () => {
           <div className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display text-lg font-bold text-foreground">{de ? "Versanddetails" : "Shipping Details"}: ...{shippingModalOrder._id.slice(-6)}</h3>
-              <button onClick={() => setShippingModalOrder(null)}><X className="w-5 h-5 text-muted-foreground" /></button>
+              <button onClick={() => setShippingModalOrder(null)} disabled={processingShipping} className="disabled:opacity-50"><X className="w-5 h-5 text-muted-foreground" /></button>
             </div>
-            <div className="space-y-4">
+            <fieldset disabled={processingShipping} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-1">{de ? "Gewicht (kg)" : "Weight (kg)"}</label>
@@ -175,14 +196,15 @@ const AdminOrders = () => {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={confirmShipping} className="flex-1 bg-accent text-accent-foreground py-2.5 rounded-lg text-sm font-semibold hover:bg-accent/90">
+                <button onClick={confirmShipping} disabled={processingShipping} className="flex-1 bg-accent text-accent-foreground py-2.5 rounded-lg text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+                  {processingShipping && <Loader2 className="w-4 h-4 animate-spin" />}
                   {de ? "Label erstellen" : "Create Label"}
                 </button>
-                <button onClick={() => setShippingModalOrder(null)} className="flex-1 bg-secondary text-foreground py-2.5 rounded-lg text-sm font-semibold">
+                <button onClick={() => setShippingModalOrder(null)} disabled={processingShipping} className="flex-1 bg-secondary text-foreground py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50">
                   {de ? "Abbrechen" : "Cancel"}
                 </button>
               </div>
-            </div>
+            </fieldset>
           </div>
         </div>
       )}
@@ -193,9 +215,9 @@ const AdminOrders = () => {
           <div className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display text-lg font-bold text-foreground">{de ? "Rückerstattung" : "Refund"}: {showRefundModal}</h3>
-              <button onClick={() => setShowRefundModal(null)}><X className="w-5 h-5 text-muted-foreground" /></button>
+              <button onClick={() => setShowRefundModal(null)} disabled={processingRefund} className="disabled:opacity-50"><X className="w-5 h-5 text-muted-foreground" /></button>
             </div>
-            <div className="space-y-4">
+            <fieldset disabled={processingRefund} className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground block mb-1">{de ? "Rückerstattungsbetrag (€)" : "Refund Amount (€)"}</label>
                 <input type="number" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder="0.00" className="w-full px-4 py-2.5 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
@@ -212,14 +234,15 @@ const AdminOrders = () => {
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={handleRefund} className="flex-1 bg-destructive text-destructive-foreground py-2.5 rounded-lg text-sm font-semibold hover:bg-destructive/90">
+                <button onClick={handleRefund} disabled={processingRefund} className="flex-1 bg-destructive text-destructive-foreground py-2.5 rounded-lg text-sm font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+                  {processingRefund && <Loader2 className="w-4 h-4 animate-spin" />}
                   {de ? "Rückerstattung einleiten" : "Process Refund"}
                 </button>
-                <button onClick={() => setShowRefundModal(null)} className="flex-1 bg-secondary text-foreground py-2.5 rounded-lg text-sm font-semibold">
+                <button onClick={() => setShowRefundModal(null)} disabled={processingRefund} className="flex-1 bg-secondary text-foreground py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50">
                   {de ? "Abbrechen" : "Cancel"}
                 </button>
               </div>
-            </div>
+            </fieldset>
           </div>
         </div>
       )}
@@ -305,8 +328,17 @@ const AdminOrders = () => {
             <button onClick={() => handleDownloadPackingSlip(selected._id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-foreground rounded-lg text-xs font-semibold hover:bg-muted transition-colors">
               <Package className="w-3.5 h-3.5" /> {de ? "Packzettel" : "Packing Slip"}
             </button>
-            <button onClick={() => handleSendNotification(selected._id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-foreground rounded-lg text-xs font-semibold hover:bg-muted transition-colors">
-              <Mail className="w-3.5 h-3.5" /> {de ? "E-Mail senden" : "Send Email"}
+            <button 
+              onClick={() => handleSendNotification(selected._id)} 
+              disabled={sendingNotificationIds.includes(selected._id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-foreground rounded-lg text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {sendingNotificationIds.includes(selected._id) ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />
+              ) : (
+                <Mail className="w-3.5 h-3.5" />
+              )}
+              {sendingNotificationIds.includes(selected._id) ? (de ? "Wird gesendet..." : "Sending...") : (de ? "E-Mail senden" : "Send Email")}
             </button>
             <button onClick={() => setShowRefundModal(selected._id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-xs font-semibold hover:bg-destructive/20 transition-colors">
               <RefreshCcw className="w-3.5 h-3.5" /> {de ? "Rückerstattung" : "Refund"}
@@ -489,23 +521,30 @@ const AdminOrders = () => {
                     <td className="p-4 text-muted-foreground">{new Date(order.createdAt).toLocaleDateString(de ? "de-DE" : "en-US")}</td>
                     <td className="p-4 text-muted-foreground hidden md:table-cell">{order.items.length} {de ? "Artikel" : "items"}</td>
                     <td className="p-4">
-                      <select
-                        value={order.status}
-                        // onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                       onChange={(e) => {
-                         const newStatus = e.target.value;
-                         if (order.status !== "shipped" && newStatus === "shipped") {
-                           handleShipped(order);
-                         } else {
-                           handleStatusChange(order._id, newStatus);
-                         }
-                       }}
-                        className="text-xs bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                      >
-                        {statusOptions.map((s) => (
-                          <option key={s.value} value={s.value}>{de ? s.de : s.en}</option>
-                        ))}
-                      </select>
+                      {updatingOrderIds.includes(order._id) ? (
+                        <div className="flex items-center gap-1.5 text-accent">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span className="text-xs font-semibold">{de ? "Aktualisiert..." : "Updating..."}</span>
+                        </div>
+                      ) : (
+                        <select
+                          value={order.status}
+                          disabled={updatingOrderIds.includes(order._id)}
+                          onChange={(e) => {
+                            const newStatus = e.target.value;
+                            if (order.status !== "shipped" && newStatus === "shipped") {
+                              handleShipped(order);
+                            } else {
+                              handleStatusChange(order._id, newStatus);
+                            }
+                          }}
+                          className="text-xs bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+                        >
+                          {statusOptions.map((s) => (
+                            <option key={s.value} value={s.value}>{de ? s.de : s.en}</option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="p-4 text-right font-semibold text-foreground">{order.total.toFixed(2)} €</td>
                     <td className="p-4 text-right">
@@ -518,26 +557,42 @@ const AdminOrders = () => {
                               fetchOrders();
                             }
                           }} 
-                          className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Details" : "Details"}
+                          disabled={updatingOrderIds.includes(order._id)}
+                          className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50" title={de ? "Details" : "Details"}
                         >
                           <Eye className="w-4 h-4 text-accent" />
                         </button>
                         <button 
                           onClick={() => window.open(`${api.defaults.baseURL}/api/order/document/${order._id}/invoice`, '_blank')} 
-                          className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Rechnung" : "Invoice"}
+                          disabled={updatingOrderIds.includes(order._id)}
+                          className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50" title={de ? "Rechnung" : "Invoice"}
                         >
                           <Download className="w-4 h-4 text-muted-foreground" />
                         </button>
-                        <button onClick={() => handleSendNotification(order._id)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "E-Mail" : "Email"}>
-                          <Mail className="w-4 h-4 text-muted-foreground" />
+                        <button 
+                          onClick={() => handleSendNotification(order._id)} 
+                          disabled={sendingNotificationIds.includes(order._id) || updatingOrderIds.includes(order._id)}
+                          className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50" 
+                          title={de ? "E-Mail" : "Email"}
+                        >
+                          {sendingNotificationIds.includes(order._id) ? (
+                            <Loader2 className="w-4 h-4 text-accent animate-spin" />
+                          ) : (
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                          )}
                         </button>
-                        <button onClick={() => setShowRefundModal(order._id)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Rückerstattung" : "Refund"}>
+                        <button 
+                          onClick={() => setShowRefundModal(order._id)} 
+                          disabled={updatingOrderIds.includes(order._id)}
+                          className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50" title={de ? "Rückerstattung" : "Refund"}
+                        >
                           <RefreshCcw className="w-4 h-4 text-muted-foreground" />
                         </button>
                         {(order.status === "shipped" || order.status === "delivered") && (
                           <button 
                             onClick={() => window.open(`${api.defaults.baseURL}/api/order/order/${order._id}/label`, '_blank')} 
-                            className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Versandetikett" : "Shipping Label"}
+                            disabled={updatingOrderIds.includes(order._id)}
+                            className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50" title={de ? "Versandetikett" : "Shipping Label"}
                           >
                             <Printer className="w-4 h-4 text-accent" />
                           </button>

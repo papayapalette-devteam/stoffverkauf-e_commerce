@@ -13,7 +13,7 @@ const Footer = () => {
         { label: t("footer.stoffe"), to: "/#stoffe" },
         { label: t("footer.kategorien"), to: "/#kategorien" },
         { label: t("footer.bestseller"), to: "/#bestseller" },
-        { label: t("footer.angebote"), to: "/#angebote" },
+        { label: t("footer.angebote"), to: "/offers" },
       ],
     },
     {

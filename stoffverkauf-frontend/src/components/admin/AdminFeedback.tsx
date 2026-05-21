@@ -13,6 +13,7 @@ const AdminFeedback = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalFeedbacks, setTotalFeedbacks] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [updatingFeedbackIds, setUpdatingFeedbackIds] = useState<string[]>([]);
 
   const fetchFeedbacks = async () => {
     setIsLoading(true);
@@ -36,7 +37,9 @@ const AdminFeedback = () => {
   }, [currentPage]);
 
   const handleStatusUpdate = async (id: string, status: "approved" | "rejected") => {
+    if (updatingFeedbackIds.includes(id)) return;
     try {
+      setUpdatingFeedbackIds(prev => [...prev, id]);
       const res = await api.patch(`/api/feedback/admin/status/${id}`, { status });
       if (res.data.success) {
         toast.success(de ? `Feedback ${status === "approved" ? "genehmigt" : "abgelehnt"}` : `Feedback ${status}`);
@@ -44,6 +47,8 @@ const AdminFeedback = () => {
       }
     } catch (err) {
       toast.error(de ? "Aktion fehlgeschlagen" : "Action failed");
+    } finally {
+      setUpdatingFeedbackIds(prev => prev.filter(x => x !== id));
     }
   };
 
@@ -102,19 +107,26 @@ const AdminFeedback = () => {
                         {de ? (f.status === 'approved' ? 'Genehmigt' : f.status === 'rejected' ? 'Abgelehnt' : 'Ausstehend') : f.status}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
-                      {f.status === 'pending' && (
+                    <td className="p-4 text-right font-medium">
+                      {updatingFeedbackIds.includes(f._id) ? (
+                        <div className="flex items-center justify-end gap-1 text-accent">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span className="text-xs">{de ? "Aktualisiert..." : "Updating..."}</span>
+                        </div>
+                      ) : f.status === 'pending' && (
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleStatusUpdate(f._id, "approved")}
-                            className="p-1.5 hover:bg-green-500/10 rounded-lg text-green-600 transition-colors"
+                            disabled={updatingFeedbackIds.includes(f._id)}
+                            className="p-1.5 hover:bg-green-500/10 rounded-lg text-green-600 transition-colors disabled:opacity-50"
                             title={de ? "Genehmigen" : "Approve"}
                           >
                             <CheckCircle className="w-5 h-5" />
                           </button>
                           <button
                             onClick={() => handleStatusUpdate(f._id, "rejected")}
-                            className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive transition-colors"
+                            disabled={updatingFeedbackIds.includes(f._id)}
+                            className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive transition-colors disabled:opacity-50"
                             title={de ? "Ablehnen" : "Reject"}
                           >
                             <XCircle className="w-5 h-5" />

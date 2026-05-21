@@ -57,6 +57,9 @@ const AdminMarketing = () => {
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [newCoupon, setNewCoupon] = useState<{ _id?: string; code: string; type: "percent" | "fixed"; value: number; minOrder: number; maxUses: number; expires: string }>({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [savingCoupon, setSavingCoupon] = useState(false);
+  const [togglingCouponIds, setTogglingCouponIds] = useState<string[]>([]);
+  const [deletingCouponIds, setDeletingCouponIds] = useState<string[]>([]);
   
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
@@ -126,6 +129,7 @@ const AdminMarketing = () => {
   const handleCreateCoupon = async () => {
     if (!newCoupon.code) return;
     try {
+      setSavingCoupon(true);
       const resp = await api.post("/api/coupon/save-coupon", newCoupon);
       if (resp.data.success) {
         toast.success(resp.data.message);
@@ -136,6 +140,8 @@ const AdminMarketing = () => {
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.response?.data?.errors?.[0] || "Error saving coupon");
+    } finally {
+      setSavingCoupon(false);
     }
   };
 
@@ -154,7 +160,9 @@ const AdminMarketing = () => {
   };
 
   const toggleCoupon = async (id: string) => {
+    if (togglingCouponIds.includes(id)) return;
     try {
+      setTogglingCouponIds(prev => [...prev, id]);
       const resp = await api.patch(`/api/coupon/toggle-coupon/${id}`);
       if (resp.data.success) {
         setCoupons(coupons.map(c => c._id === id ? { ...c, active: resp.data.active } : c));
@@ -162,11 +170,15 @@ const AdminMarketing = () => {
       }
     } catch (err) {
       toast.error("Failed to update status");
+    } finally {
+      setTogglingCouponIds(prev => prev.filter(x => x !== id));
     }
   };
 
   const deleteCoupon = async (id: string, code: string) => {
+    if (deletingCouponIds.includes(id)) return;
     try {
+      setDeletingCouponIds(prev => [...prev, id]);
       const resp = await api.delete(`/api/coupon/delete-coupon/${id}`);
       if (resp.data.success) {
         setCoupons(coupons.filter(c => c._id !== id));
@@ -175,6 +187,7 @@ const AdminMarketing = () => {
     } catch (err) {
       toast.error("Delete failed");
     } finally {
+      setDeletingCouponIds(prev => prev.filter(x => x !== id));
       setDeleteConfirm(null);
     }
   };
@@ -292,7 +305,7 @@ const AdminMarketing = () => {
               <h3 className="font-display text-base font-bold text-foreground mb-4">
                 {editingCoupon ? (de ? "Gutschein bearbeiten" : "Edit Coupon") : (de ? "Gutschein erstellen" : "Create Coupon")}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <fieldset disabled={savingCoupon} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-1">{de ? "Gutscheincode" : "Coupon Code"}</label>
                   <input value={newCoupon.code} onChange={e => setNewCoupon({ ...newCoupon, code: e.target.value.toUpperCase() })} placeholder="WEBER10" className={inputClass} />
@@ -320,12 +333,32 @@ const AdminMarketing = () => {
                   <label className="text-sm font-medium text-foreground block mb-1">{de ? "Ablaufdatum" : "Expires"}</label>
                   <input type="date" value={newCoupon.expires} onChange={e => setNewCoupon({ ...newCoupon, expires: e.target.value })} className={inputClass} />
                 </div>
-              </div>
+              </fieldset>
               <div className="flex gap-3 mt-4">
-                <button onClick={handleCreateCoupon} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                  {editingCoupon ? (de ? "Speichern" : "Save") : (de ? "Erstellen" : "Create")}
+                <button
+                  onClick={handleCreateCoupon}
+                  disabled={savingCoupon}
+                  className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingCoupon ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {de ? "Wird verarbeitet..." : "Processing..."}
+                    </>
+                  ) : (
+                    editingCoupon ? (de ? "Speichern" : "Save") : (de ? "Erstellen" : "Create")
+                  )}
                 </button>
-                <button onClick={() => { setShowCouponForm(false); setEditingCoupon(null); }} className="bg-secondary text-foreground px-6 py-2.5 rounded-lg text-sm font-semibold">{de ? "Abbrechen" : "Cancel"}</button>
+                <button
+                  onClick={() => { setShowCouponForm(false); setEditingCoupon(null); }}
+                  disabled={savingCoupon}
+                  className="bg-secondary text-foreground px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {de ? "Abbrechen" : "Cancel"}
+                </button>
               </div>
             </div>
           )}
@@ -371,27 +404,65 @@ const AdminMarketing = () => {
                       </td>
                       <td className="p-4 text-muted-foreground hidden lg:table-cell">{c.expires || "—"}</td>
                       <td className="p-4 text-center">
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" checked={c.active} onChange={() => toggleCoupon(c._id)} className="sr-only peer" />
-                          <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
+                        <label className={`relative inline-flex items-center ${togglingCouponIds.includes(c._id) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
+                          <input
+                            type="checkbox"
+                            checked={c.active}
+                            onChange={() => toggleCoupon(c._id)}
+                            disabled={togglingCouponIds.includes(c._id)}
+                            className="sr-only peer"
+                          />
+                          {togglingCouponIds.includes(c._id) ? (
+                            <div className="w-9 h-5 flex items-center justify-center">
+                              <svg className="animate-spin h-4 w-4 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            </div>
+                          ) : (
+                            <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
+                          )}
                         </label>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openEdit(c)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Bearbeiten" : "Edit"}>
+                          <button
+                            onClick={() => openEdit(c)}
+                            disabled={deletingCouponIds.includes(c._id) || togglingCouponIds.includes(c._id)}
+                            className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={de ? "Bearbeiten" : "Edit"}
+                          >
                             <Pencil className="w-4 h-4 text-accent" />
                           </button>
                           {deleteConfirm === c._id ? (
                             <div className="flex items-center gap-1">
-                              <button onClick={() => deleteCoupon(c._id, c.code)} className="px-2 py-1 bg-destructive text-destructive-foreground rounded text-xs font-semibold">
-                                {de ? "Ja" : "Yes"}
+                              <button
+                                onClick={() => deleteCoupon(c._id, c.code)}
+                                disabled={deletingCouponIds.includes(c._id)}
+                                className="px-2 py-1 bg-destructive text-destructive-foreground rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                              >
+                                {deletingCouponIds.includes(c._id) ? (
+                                  <svg className="animate-spin h-3.5 w-3.5 text-destructive-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                ) : (de ? "Ja" : "Yes")}
                               </button>
-                              <button onClick={() => setDeleteConfirm(null)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                              <button
+                                onClick={() => setDeleteConfirm(null)}
+                                disabled={deletingCouponIds.includes(c._id)}
+                                className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
                                 <X className="w-4 h-4 text-muted-foreground" />
                               </button>
                             </div>
                           ) : (
-                            <button onClick={() => setDeleteConfirm(c._id)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Löschen" : "Delete"}>
+                            <button
+                              onClick={() => setDeleteConfirm(c._id)}
+                              disabled={deletingCouponIds.includes(c._id) || togglingCouponIds.includes(c._id)}
+                              className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={de ? "Löschen" : "Delete"}
+                            >
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </button>
                           )}

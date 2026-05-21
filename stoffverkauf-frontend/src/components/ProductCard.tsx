@@ -71,7 +71,7 @@ const ProductCard = ({ product, index }: ProductCardProps): JSX.Element => {
         <div className="flex items-center justify-between">
           <div>
             <p className="font-body font-bold text-foreground">
-              {(product.salePrice || product.price).toFixed(2)} €
+              {product.salePrice.toFixed(2)} €
             </p>
             {product.salePrice && (
               <p className="text-xs text-muted-foreground line-through">

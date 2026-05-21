@@ -39,6 +39,8 @@ const AdminIntegrations = () => {
   const [bodyCode, setBodyCode] = useState("");
 
   const [isLoading, setIsLoading] = useState(true);
+  const [savingKeys, setSavingKeys] = useState<string[]>([]);
+  const [disconnectingKeys, setDisconnectingKeys] = useState<string[]>([]);
 
   // Load all integrations from backend
   useEffect(() => {
@@ -80,21 +82,29 @@ const AdminIntegrations = () => {
   }, []);
 
   const saveIntegration = async (key: string, name: string, data: any) => {
+    if (savingKeys.includes(key)) return;
     try {
+      setSavingKeys(prev => [...prev, key]);
       await api.post('/api/integration/save', { key, name, data, isActive: true });
       toast.success(de ? `${name} Integration gespeichert` : `${name} integration saved`);
     } catch (err) {
       toast.error(de ? `Fehler beim Speichern von ${name}` : `Failed to save ${name}`);
+    } finally {
+      setSavingKeys(prev => prev.filter(k => k !== key));
     }
   };
 
   const disconnectIntegration = async (key: string, name: string, resetFns: Array<(v: any) => void>) => {
+    if (disconnectingKeys.includes(key)) return;
     try {
+      setDisconnectingKeys(prev => [...prev, key]);
       await api.delete(`/api/integration/${key}`);
       resetFns.forEach(fn => fn(""));
       toast.success(de ? `${name} Verbindung getrennt` : `${name} disconnected`);
     } catch (err) {
       toast.error(de ? `Fehler beim Trennen von ${name}` : `Failed to disconnect ${name}`);
+    } finally {
+      setDisconnectingKeys(prev => prev.filter(k => k !== key));
     }
   };
 
@@ -254,18 +264,43 @@ const AdminIntegrations = () => {
           </button>
           {expanded === integ.id && (
             <div className="px-5 pb-5 border-t border-border pt-5">
-              {integ.fields}
+              <fieldset disabled={savingKeys.includes(integ.id) || disconnectingKeys.includes(integ.id)} className="space-y-4">
+                {integ.fields}
+              </fieldset>
               <div className="mt-4 flex gap-3">
-                <button onClick={integ.onSave} className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                  {de ? "API-Schlüssel speichern" : "Save API Keys"}
+                <button 
+                  onClick={integ.onSave} 
+                  disabled={savingKeys.includes(integ.id) || disconnectingKeys.includes(integ.id)}
+                  className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingKeys.includes(integ.id) ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-primary-foreground" />
+                      {de ? "Speichern..." : "Saving..."}
+                    </>
+                  ) : (
+                    de ? "API-Schlüssel speichern" : "Save API Keys"
+                  )}
                 </button>
                 {integ.status === "connected" && (
                   <>
-                    <button onClick={() => toast.success(de ? "Verbindung getestet ✓" : "Connection tested ✓")} className="bg-secondary text-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-muted transition-colors">
+                    <button 
+                      onClick={() => toast.success(de ? "Verbindung getestet ✓" : "Connection tested ✓")} 
+                      disabled={savingKeys.includes(integ.id) || disconnectingKeys.includes(integ.id)}
+                      className="bg-secondary text-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       {de ? "Testen" : "Test Connection"}
                     </button>
-                    <button onClick={integ.onDisconnect} className="bg-destructive/10 text-destructive px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-2">
-                      <Unplug className="w-4 h-4" />
+                    <button 
+                      onClick={integ.onDisconnect} 
+                      disabled={savingKeys.includes(integ.id) || disconnectingKeys.includes(integ.id)}
+                      className="bg-destructive/10 text-destructive px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {disconnectingKeys.includes(integ.id) ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Unplug className="w-4 h-4" />
+                      )}
                       {de ? "Trennen" : "Disconnect"}
                     </button>
                   </>
@@ -308,7 +343,7 @@ const AdminIntegrations = () => {
           <h3 className="font-display text-lg font-bold text-foreground">{de ? "Eigener Code" : "Custom Code"}</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-4">{de ? "Fügen Sie eigenen HTML/JavaScript-Code in den <head> oder <body> Ihrer Website ein." : "Add custom HTML/JavaScript code to the <head> or <body> of your website."}</p>
-        <div className="space-y-4">
+        <fieldset disabled={savingKeys.includes("custom_code")} className="space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground block mb-1">{"<head>"} Code</label>
             <textarea 
@@ -331,11 +366,19 @@ const AdminIntegrations = () => {
           </div>
           <button 
             onClick={() => saveIntegration("custom_code", "Custom Code", { headCode, bodyCode })}
-            className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+            disabled={savingKeys.includes("custom_code")}
+            className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {de ? "Speichere Code" : "Save Code"}
+            {savingKeys.includes("custom_code") ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-primary-foreground" />
+                {de ? "Speichern..." : "Saving..."}
+              </>
+            ) : (
+              de ? "Speichere Code" : "Save Code"
+            )}
           </button>
-        </div>
+        </fieldset>
       </div>
     </div>
   );

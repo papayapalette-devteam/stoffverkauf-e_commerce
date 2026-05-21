@@ -40,6 +40,7 @@ import Returns from "./pages/Returns";
 import Legal from "./pages/Legal";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/protected_route";
+import Offers from "./pages/Offers";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,7 @@ const App = () => (
                           <Route path="/samples" element={<Samples />} />
                           <Route path="/returns" element={<Returns />} />
                           <Route path="/legal" element={<Legal />} />
+                          <Route path="/offers" element={<Offers />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                         <CookieConsent />

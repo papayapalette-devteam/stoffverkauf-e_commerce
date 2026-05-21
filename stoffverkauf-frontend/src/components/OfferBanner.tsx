@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Percent } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 const OfferBanner = () => {
@@ -31,12 +32,12 @@ const OfferBanner = () => {
                 </p>
               </div>
             </div>
-            <a
-              href="/#shop"
+            <Link
+              to="/offers"
               className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-7 py-3.5 rounded-lg font-body font-semibold text-sm hover:opacity-90 transition-opacity flex-shrink-0"
             >
               {t("offer.cta")} <ArrowRight className="w-4 h-4" />
-            </a>
+            </Link>
           </div>
         </motion.div>
       </div>

@@ -12,6 +12,7 @@ const { authMiddleware, adminMiddleware } = require('../middlewares/auth');
 // ADMIN ROUTES (Must come BEFORE :id routes)
 // ==========================================
 router.get('/admin/returns', authMiddleware, adminMiddleware, returnController.getAllReturns);
+router.get('/admin/analytics', authMiddleware, adminMiddleware, orderController.getAnalyticsOverview);
 router.get('/admin/all', authMiddleware, adminMiddleware, orderController.getAllOrders);
 router.post('/admin/refund', authMiddleware, adminMiddleware, returnController.processRefund);
 router.post('/admin/resend-confirmation', authMiddleware, adminMiddleware, orderController.resendConfirmationEmail);

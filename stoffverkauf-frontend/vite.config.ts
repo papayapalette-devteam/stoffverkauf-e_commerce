@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { writeFileSync } from "fs";
+import { writeFileSync, existsSync, mkdirSync } from "fs";
 
 const BASE_URL = "https://www.stoffverkauf-weber.de";
 
@@ -48,6 +48,9 @@ function generateSitemapPlugin() {
 
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`;
 
+      if (!existsSync("dist")) {
+        mkdirSync("dist", { recursive: true });
+      }
       writeFileSync("dist/sitemap.xml", sitemap);
       console.log(`✅ Sitemap generated with ${urls.length} URLs`);
     },

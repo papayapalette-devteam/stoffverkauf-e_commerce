@@ -745,6 +745,275 @@ exports.handleSendcloudWebhook = async (req, res) => {
   }
 };
 
+// Admin: Get Analytics Overview
+exports.getAnalyticsOverview = async (req, res) => {
+  try {
+    const { period = "7d" } = req.query;
+    const now = new Date();
+    let days = 7;
+    if (period === "30d") days = 30;
+    else if (period === "90d") days = 90;
+    else if (period === "365d") days = 365;
+
+    // Boundaries
+    const currentStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const previousStart = new Date(now.getTime() - 2 * days * 24 * 60 * 60 * 1000);
+    const previousEnd = currentStart;
+
+    // 1. REVENUE METRICS (isPaid: true)
+    const currentRevenueAgg = await Order.aggregate([
+      {
+        $match: {
+          isPaid: true,
+          createdAt: { $gte: currentStart, $lte: now }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$total" }
+        }
+      }
+    ]);
+    const currentRevenue = currentRevenueAgg[0]?.total || 0;
+
+    const previousRevenueAgg = await Order.aggregate([
+      {
+        $match: {
+          isPaid: true,
+          createdAt: { $gte: previousStart, $lte: previousEnd }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$total" }
+        }
+      }
+    ]);
+    const previousRevenue = previousRevenueAgg[0]?.total || 0;
+
+    // 2. ORDER METRICS (non-cancelled)
+    const currentOrders = await Order.countDocuments({
+      status: { $ne: "cancelled" },
+      createdAt: { $gte: currentStart, $lte: now }
+    });
+    const previousOrders = await Order.countDocuments({
+      status: { $ne: "cancelled" },
+      createdAt: { $gte: previousStart, $lte: previousEnd }
+    });
+
+    // 3. CUSTOMER METRICS (role: customer)
+    const User = require("../../Modals/RegisterUser/register_user");
+    const totalCustomers = await User.countDocuments({ role: "customer" });
+    const currentNewCustomers = await User.countDocuments({
+      role: "customer",
+      createdAt: { $gte: currentStart, $lte: now }
+    });
+    const previousNewCustomers = await User.countDocuments({
+      role: "customer",
+      createdAt: { $gte: previousStart, $lte: previousEnd }
+    });
+
+    // 4. GROWTH CALCULATIONS
+    const calculateChange = (curr, prev) => {
+      if (prev === 0) {
+        return { change: curr > 0 ? "+100%" : "0%", up: curr > 0 };
+      }
+      const pct = ((curr - prev) / prev) * 100;
+      const formatted = pct >= 0 ? `+${pct.toFixed(1)}%` : `${pct.toFixed(1)}%`;
+      return { change: formatted, up: pct >= 0 };
+    };
+
+    const revenueChange = calculateChange(currentRevenue, previousRevenue);
+    const ordersChange = calculateChange(currentOrders, previousOrders);
+    const customersChange = calculateChange(currentNewCustomers, previousNewCustomers);
+
+    // 5. REVENUE TREND TIMELINE
+    let revenueTrend = [];
+    const paidOrdersInPeriod = await Order.find({
+      isPaid: true,
+      createdAt: { $gte: currentStart, $lte: now }
+    });
+
+    if (period === "7d" || period === "30d") {
+      // Daily Buckets
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateStr = d.toISOString().split("T")[0];
+        const label = d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+        revenueTrend.push({ dateStr, label, value: 0 });
+      }
+
+      paidOrdersInPeriod.forEach(order => {
+        const dateStr = order.createdAt.toISOString().split("T")[0];
+        const bucket = revenueTrend.find(b => b.dateStr === dateStr);
+        if (bucket) {
+          bucket.value += order.total;
+        }
+      });
+    } else if (period === "90d") {
+      // 12 Weekly Buckets
+      const bucketSizeMs = (90 * 24 * 60 * 60 * 1000) / 12;
+      for (let i = 11; i >= 0; i--) {
+        const startTime = now.getTime() - (i + 1) * bucketSizeMs;
+        const endTime = now.getTime() - i * bucketSizeMs;
+        const startDate = new Date(startTime);
+        const label = startDate.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+        revenueTrend.push({
+          startTime,
+          endTime,
+          label,
+          value: 0
+        });
+      }
+
+      paidOrdersInPeriod.forEach(order => {
+        const t = order.createdAt.getTime();
+        const bucket = revenueTrend.find(b => t >= b.startTime && t <= b.endTime);
+        if (bucket) {
+          bucket.value += order.total;
+        }
+      });
+    } else if (period === "365d") {
+      // 12 Monthly Buckets
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const label = d.toLocaleDateString("de-DE", { month: "short" });
+        revenueTrend.push({
+          monthKey,
+          label,
+          value: 0
+        });
+      }
+
+      paidOrdersInPeriod.forEach(order => {
+        const d = order.createdAt;
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const bucket = revenueTrend.find(b => b.monthKey === monthKey);
+        if (bucket) {
+          bucket.value += order.total;
+        }
+      });
+    }
+
+    const formattedTrend = revenueTrend.map(item => ({
+      label: item.label,
+      value: Math.round(item.value * 100) / 100
+    }));
+
+    // 6. TOP PRODUCTS (Top 5)
+    const topProductsAgg = await Order.aggregate([
+      {
+        $match: {
+          isPaid: true,
+          createdAt: { $gte: currentStart, $lte: now }
+        }
+      },
+      { $unwind: "$items" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "productDetails"
+        }
+      },
+      { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: "$items.product",
+          name: { $first: "$items.name" },
+          sales: { $sum: "$items.quantity" },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+          category: { $first: "$productDetails.category" }
+        }
+      },
+      { $sort: { sales: -1 } },
+      { $limit: 5 }
+    ]);
+
+    const formattedProducts = topProductsAgg.map(p => ({
+      name: p.name || "Unbekanntes Produkt",
+      sales: p.sales,
+      revenue: Math.round(p.revenue * 100) / 100,
+      category: p.category || "Sonstige"
+    }));
+
+    // 7. CATEGORY PERFORMANCE
+    const categoryAgg = await Order.aggregate([
+      {
+        $match: {
+          isPaid: true,
+          createdAt: { $gte: currentStart, $lte: now }
+        }
+      },
+      { $unwind: "$items" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "productDetails"
+        }
+      },
+      { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: { $ifNull: ["$productDetails.category", "Sonstige"] },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+          orders: { $addToSet: "$_id" }
+        }
+      }
+    ]);
+
+    const totalCategoryRevenue = categoryAgg.reduce((sum, c) => sum + c.revenue, 0);
+    const categoryPerformance = categoryAgg.map(c => {
+      const ordersCount = c.orders.length;
+      const pct = totalCategoryRevenue > 0 ? Math.round((c.revenue / totalCategoryRevenue) * 100) : 0;
+      return {
+        name: c._id,
+        revenue: Math.round(c.revenue * 100) / 100,
+        orders: ordersCount,
+        pct
+      };
+    }).sort((a, b) => b.revenue - a.revenue);
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        revenue: {
+          value: `€${currentRevenue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          change: revenueChange.change,
+          up: revenueChange.up
+        },
+        orders: {
+          value: currentOrders.toLocaleString("de-DE"),
+          change: ordersChange.change,
+          up: ordersChange.up
+        },
+        customers: {
+          value: totalCustomers.toLocaleString("de-DE"),
+          change: customersChange.change,
+          up: customersChange.up
+        }
+      },
+      revenueTrend: formattedTrend,
+      topProducts: formattedProducts,
+      categoryPerformance
+    });
+
+  } catch (error) {
+    console.error("Analytics aggregation error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
 
 
 

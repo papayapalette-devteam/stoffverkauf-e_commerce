@@ -177,36 +177,43 @@ const getVisiblePages = () => {
   return pages;
 };
 
-const [products, setproducts] = useState<ProductForm[]>([]);
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const resp = await api.get("/api/products/get-product", {
-          params: { page, limit,search },
-        });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<string[]>([]);
 
-        setproducts(resp.data.products);
+  const [products, setproducts] = useState<ProductForm[]>([]);
 
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const resp = await api.get("/api/products/get-product", {
+        params: { page, limit, search },
+      });
 
-        // Optional: if backend sends total count
-        if (resp.data) {
-          setTotalPages(resp.data.totalPages);
-        }
+      setproducts(resp.data.products);
 
-      } catch (err: unknown) {
-        if (axios.isAxiosError(err)) {
-          toast.error(
-            err.response?.data?.message || "Failed to fetch categories"
-          );
-        } else {
-          toast.error("An unexpected error occurred while fetching categories");
-          console.error(err);
-        }
+      // Optional: if backend sends total count
+      if (resp.data) {
+        setTotalPages(resp.data.totalPages);
       }
-    };
 
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(
+          err.response?.data?.message || "Failed to fetch products"
+        );
+      } else {
+        toast.error("An unexpected error occurred while fetching products");
+        console.error(err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
-  }, [page, limit,search]);
+  }, [page, limit, search]);
 
 // upload images
 
@@ -245,67 +252,71 @@ const removeImage = (index: number) => {
   }));
 };
 
-  const handleSave = async() => {
-
+  const handleSave = async () => {
+    if (saving) return;
     try {
-        const response = await api.post("/api/products/add-product",form);
+      setSaving(true);
+      const response = await api.post("/api/products/add-product", form);
 
-        toast.success(form._id ? (de ? "Produkt aktualisiert" : "Product updated") : (de ? "Produkt erstellt" : "Product created"));
-        setShowForm(false);
-        setEditingId(null);
-        setForm(emptyForm);
-      
+      toast.success(form._id ? (de ? "Produkt aktualisiert" : "Product updated") : (de ? "Produkt erstellt" : "Product created"));
+      setShowForm(false);
+      setEditingId(null);
+      setForm(emptyForm);
+      fetchProducts();
+
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        // Axios error
         toast.error(
           err.response?.data?.errors?.[0] ||
           err.response?.data?.message ||
           "Server error"
         );
       } else {
-        // Non-Axios / unknown error
         toast.error("An unexpected error occurred");
         console.error(err);
       }
-    };
-
+    } finally {
+      setSaving(false);
+    }
   };
 
-const handleDelete = async (id: string, name: string) => {
-  const confirmDelete = window.confirm(
-    de
-      ? `Möchten Sie "${name}" wirklich löschen?`
-      : `Are you sure you want to delete "${name}"?`
-  );
-
-  if (!confirmDelete) return;
-
-  try {
-    await api.delete(`/api/products/delete-product/${id}`);
-
-    toast.success(
-      de ? `"${name}" gelöscht` : `"${name}" deleted`
+  const handleDelete = async (id: string, name: string) => {
+    if (deletingIds.includes(id)) return;
+    const confirmDelete = window.confirm(
+      de
+        ? `Möchten Sie "${name}" wirklich löschen?`
+        : `Are you sure you want to delete "${name}"?`
     );
 
-    // remove from UI (important)
-    setproducts((prev) => prev.filter((p) => p._id !== id));
+    if (!confirmDelete) return;
 
-  }catch (err: unknown) {
+    try {
+      setDeletingIds((prev) => [...prev, id]);
+      await api.delete(`/api/products/delete-product/${id}`);
+
+      toast.success(
+        de ? `"${name}" gelöscht` : `"${name}" deleted`
+      );
+
+      // remove from UI (important)
+      setproducts((prev) => prev.filter((p) => p._id !== id));
+
+    } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        // Axios error
         toast.error(
           err.response?.data?.errors?.[0] ||
           err.response?.data?.message ||
           "Server error"
         );
       } else {
-        // Non-Axios / unknown error
         toast.error("An unexpected error occurred");
         console.error(err);
       }
-    };
-};
+    } finally {
+      setDeletingIds((prev) => prev.filter((x) => x !== id));
+    }
+  };
+
   const addVariant = () => {
     setForm({ ...form, variants: [...form.variants, { color: "", pattern: "", size: "", stock: 0 }] });
   };
@@ -893,14 +904,14 @@ const handleSyncCloudinary = async () => {
               {editingId ? (de ? "Produkt bearbeiten" : "Edit Product") : (de ? "Neues Produkt" : "New Product")}
             </h3>
             <div className="flex gap-1">
-              <button onClick={() => setActiveFormTab("basic")} className={formTabClass("basic")}>{de ? "Allgemein" : "General"}</button>
-              <button onClick={() => setActiveFormTab("seo")} className={formTabClass("seo")}>SEO</button>
-              <button onClick={() => setActiveFormTab("variants")} className={formTabClass("variants")}>{de ? "Varianten" : "Variants"}</button>
+              <button onClick={() => !saving && setActiveFormTab("basic")} disabled={saving} className={`${formTabClass("basic")} disabled:opacity-50 disabled:cursor-not-allowed`}>{de ? "Allgemein" : "General"}</button>
+              <button onClick={() => !saving && setActiveFormTab("seo")} disabled={saving} className={`${formTabClass("seo")} disabled:opacity-50 disabled:cursor-not-allowed`}>SEO</button>
+              <button onClick={() => !saving && setActiveFormTab("variants")} disabled={saving} className={`${formTabClass("variants")} disabled:opacity-50 disabled:cursor-not-allowed`}>{de ? "Varianten" : "Variants"}</button>
             </div>
           </div>
 
           {activeFormTab === "basic" && (
-            <div className="space-y-4">
+            <fieldset disabled={saving} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-1">{de ? "Produktname" : "Product Name"}</label>
@@ -1026,11 +1037,11 @@ const handleSyncCloudinary = async () => {
     ))}
   </div>
 )}
-            </div>
+            </fieldset>
           )}
 
           {activeFormTab === "seo" && (
-            <div className="space-y-4">
+            <fieldset disabled={saving} className="space-y-4">
               <div className="bg-secondary/50 rounded-lg p-3 border border-border mb-2">
                 <p className="text-xs text-muted-foreground">{de ? "SEO-Felder helfen, das Produkt in Suchmaschinen besser sichtbar zu machen." : "SEO fields help improve product visibility in search engines."}</p>
               </div>
@@ -1055,11 +1066,11 @@ const handleSyncCloudinary = async () => {
                 <p className="text-xs text-green-700">stoffverkauf-weber.de/product/...</p>
                 <p className="text-xs text-muted-foreground mt-1">{form.seoDescription || (de ? "Meta-Beschreibung..." : "Meta description...")}</p>
               </div>
-            </div>
+            </fieldset>
           )}
 
           {activeFormTab === "variants" && (
-            <div className="space-y-4">
+            <fieldset disabled={saving} className="space-y-4">
               <p className="text-sm text-muted-foreground">{de ? "Fügen Sie Varianten wie Farben, Muster und Breiten hinzu." : "Add variants like colors, patterns, and widths."}</p>
               {form.variants.map((v, idx) => (
                 <div key={idx} className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-secondary/50 rounded-lg border border-border">
@@ -1087,14 +1098,29 @@ const handleSyncCloudinary = async () => {
               <button onClick={addVariant} className="flex items-center gap-2 text-sm text-accent border border-accent/30 px-4 py-2 rounded-lg hover:bg-accent/10 transition-colors">
                 <Plus className="w-4 h-4" /> {de ? "Variante hinzufügen" : "Add Variant"}
               </button>
-            </div>
+            </fieldset>
           )}
 
           <div className="flex gap-3 mt-6 pt-4 border-t border-border">
-            <button onClick={handleSave} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-              {de ? "Speichern" : "Save"}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {de ? "Wird verarbeitet..." : "Processing..."}
+                </>
+              ) : (
+                de ? "Speichern" : "Save"
+              )}
             </button>
-            <button onClick={() => { setShowForm(false); setEditingId(null); }} className="bg-secondary text-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-muted transition-colors">
+            <button
+              onClick={() => { setShowForm(false); setEditingId(null); }}
+              disabled={saving}
+              className="bg-secondary text-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {de ? "Abbrechen" : "Cancel"}
             </button>
           </div>
@@ -1116,43 +1142,103 @@ const handleSyncCloudinary = async () => {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
-                <tr key={p._id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <img src={p?.images?.length ? p.images[0] : "/placeholder.svg"} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-secondary flex-shrink-0" />
-                      <div>
-                        <span className="font-medium text-foreground block">{p.name}</span>
-                        <div className="flex items-center gap-2">
-                           {p.sku && <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded uppercase font-mono">{p.sku}</span>}
-                           {p.badge && <span className="text-[10px] text-accent font-bold uppercase">{p.badge}</span>}
+              {loading ? (
+                [1, 2, 3, 4, 5].map((n) => (
+                  <tr key={n} className="border-b border-border last:border-0 animate-pulse">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-muted rounded-lg flex-shrink-0" />
+                        <div className="space-y-2 flex-1 animate-pulse">
+                          <div className="h-4 bg-muted rounded w-3/4" />
+                          <div className="h-3 bg-muted rounded w-1/2" />
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="p-4 text-muted-foreground hidden md:table-cell">{p.category}</td>
-                  <td className="p-4 text-foreground font-semibold">{p.price.toFixed(2)} €</td>
-                  <td className="p-4 text-muted-foreground hidden lg:table-cell">⭐ {p.rating} ({p.reviews})</td>
-                  <td className="p-4 hidden md:table-cell">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.inStock !== false ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
-                      {p.inStock !== false ? (de ? "Auf Lager" : "In Stock") : (de ? "Vergriffen" : "Out of Stock")}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => window.open(`/product/${p._id}`, "_blank")} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Ansehen" : "View"}>
-                        <Eye className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                      <button onClick={() => handleEdit(p)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Bearbeiten" : "Edit"}>
-                        <Pencil className="w-4 h-4 text-accent" />
-                      </button>
-                      <button onClick={() => handleDelete(p._id,p.name)} className="p-2 hover:bg-secondary rounded-lg transition-colors" title={de ? "Löschen" : "Delete"}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </button>
-                    </div>
+                    </td>
+                    <td className="p-4 hidden md:table-cell">
+                      <div className="h-4 bg-muted rounded w-2/3" />
+                    </td>
+                    <td className="p-4">
+                      <div className="h-4 bg-muted rounded w-1/3" />
+                    </td>
+                    <td className="p-4 hidden lg:table-cell">
+                      <div className="h-4 bg-muted rounded w-1/2" />
+                    </td>
+                    <td className="p-4 hidden md:table-cell">
+                      <div className="h-5 bg-muted rounded-full w-16" />
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <div className="w-8 h-8 bg-muted rounded-lg" />
+                        <div className="w-8 h-8 bg-muted rounded-lg" />
+                        <div className="w-8 h-8 bg-muted rounded-lg" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    {de ? "Keine Produkte gefunden" : "No products found"}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                products.map((p) => (
+                  <tr key={p._id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <img src={p?.images?.length ? p.images[0] : "/placeholder.svg"} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-secondary flex-shrink-0" />
+                        <div>
+                          <span className="font-medium text-foreground block">{p.name}</span>
+                          <div className="flex items-center gap-2">
+                             {p.sku && <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded uppercase font-mono">{p.sku}</span>}
+                             {p.badge && <span className="text-[10px] text-accent font-bold uppercase">{p.badge}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-muted-foreground hidden md:table-cell">{p.category}</td>
+                    <td className="p-4 text-foreground font-semibold">{p.price.toFixed(2)} €</td>
+                    <td className="p-4 text-muted-foreground hidden lg:table-cell">⭐ {p.rating} ({p.reviews})</td>
+                    <td className="p-4 hidden md:table-cell">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.inStock !== false ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
+                        {p.inStock !== false ? (de ? "Auf Lager" : "In Stock") : (de ? "Vergriffen" : "Out of Stock")}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => window.open(`/product/${p._id}`, "_blank")}
+                          disabled={deletingIds.includes(p._id)}
+                          className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={de ? "Ansehen" : "View"}
+                        >
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(p)}
+                          disabled={deletingIds.includes(p._id)}
+                          className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={de ? "Bearbeiten" : "Edit"}
+                        >
+                          <Pencil className="w-4 h-4 text-accent" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p._id, p.name)}
+                          disabled={deletingIds.includes(p._id)}
+                          className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-8 min-h-8"
+                          title={de ? "Löschen" : "Delete"}
+                        >
+                          {deletingIds.includes(p._id) ? (
+                            <Loader2 className="w-4 h-4 text-destructive animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

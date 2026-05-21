@@ -18,6 +18,8 @@ const AdminSettings = () => {
   const [activeTab, setActiveTab] = useState<"general" | "appearance" | "email" | "security" | "tax" | "roles">("general");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [deletingAdminIds, setDeletingAdminIds] = useState<string[]>([]);
   
   const [settings, setSettings] = useState<any>({
     general: { storeName: "", email: "", phone: "", currency: "EUR (€)", language: "de", address: "", vatNumber: "" },
@@ -74,7 +76,9 @@ const AdminSettings = () => {
       toast.error(de ? "Bitte füllen Sie alle Felder aus" : "Please fill in all fields");
       return;
     }
+    if (addingAdmin) return;
     try {
+      setAddingAdmin(true);
       const res = await api.post("/api/user/admins", newUser);
       if (res.data.success) {
         toast.success(de ? "Admin hinzugefügt" : "Admin added");
@@ -86,17 +90,23 @@ const AdminSettings = () => {
       toast.error(err.response?.data?.error === "email_exists" 
         ? (de ? "E-Mail bereits vergeben" : "Email already exists")
         : "Failed to add admin");
+    } finally {
+      setAddingAdmin(false);
     }
   };
 
   const deleteUser = async (id: string) => {
+    if (deletingAdminIds.includes(id)) return;
     if (!confirm(de ? "Benutzer wirklich löschen?" : "Are you sure you want to delete this user?")) return;
     try {
+      setDeletingAdminIds(prev => [...prev, id]);
       await api.delete(`/api/user/admins/${id}`);
       toast.success(de ? "Benutzer gelöscht" : "User deleted");
       fetchAdmins();
     } catch (err) {
       toast.error("Failed to delete user");
+    } finally {
+      setDeletingAdminIds(prev => prev.filter(x => x !== id));
     }
   };
 
@@ -346,9 +356,14 @@ const AdminSettings = () => {
                     </span>
                     <button 
                       onClick={() => deleteUser(u._id)}
-                      className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                      disabled={deletingAdminIds.includes(u._id)}
+                      className="p-2 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {deletingAdminIds.includes(u._id) ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -365,7 +380,7 @@ const AdminSettings = () => {
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
                 <div className="bg-card w-full max-w-md rounded-2xl border border-border p-6 shadow-elevated">
                   <h3 className="font-display text-xl font-bold mb-4">{de ? "Neuen Admin hinzufügen" : "Add New Admin"}</h3>
-                  <div className="space-y-4">
+                  <fieldset disabled={addingAdmin} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-medium mb-1 block">Vorname</label>
@@ -385,14 +400,15 @@ const AdminSettings = () => {
                       <input className={inputClass} type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
                     </div>
                     <div className="flex gap-3 pt-4">
-                      <button onClick={() => setShowAddUser(false)} className="flex-1 px-4 py-2 rounded-lg border border-border text-sm font-semibold hover:bg-secondary transition-colors">
+                      <button onClick={() => setShowAddUser(false)} disabled={addingAdmin} className="flex-1 px-4 py-2 rounded-lg border border-border text-sm font-semibold hover:bg-secondary transition-colors disabled:opacity-50">
                         {de ? "Abbrechen" : "Cancel"}
                       </button>
-                      <button onClick={addUser} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+                      <button onClick={addUser} disabled={addingAdmin} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+                        {addingAdmin && <Loader2 className="w-4 h-4 animate-spin" />}
                         {de ? "Hinzufügen" : "Add"}
                       </button>
                     </div>
-                  </div>
+                  </fieldset>
                 </div>
               </div>
             )}

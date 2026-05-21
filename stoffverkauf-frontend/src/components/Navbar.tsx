@@ -22,7 +22,7 @@ const Navbar = () => {
     { label: t("nav.kategorien"), href: "/#kategorien" },
     { label: t("nav.bestseller"), href: "/#bestseller" },
     { label: t("nav.stoffe"), href: "/#stoffe" },
-    { label: t("nav.angebote"), href: "/#angebote" },
+    { label: t("nav.angebote"), href: "/offers" },
   ];
 
   return (
@@ -60,13 +60,23 @@ const Navbar = () => {
 
             <nav className="hidden lg:flex items-center gap-8">
               {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {link.label}
-                </a>
+                link.href.startsWith("/#") ? (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                )
               ))}
             </nav>
 
@@ -133,14 +143,25 @@ const Navbar = () => {
             >
               <nav className="flex flex-col py-4 px-4 gap-1">
                 {navLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className="px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {link.label}
-                  </a>
+                  link.href.startsWith("/#") ? (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      className="px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={link.href}
+                      to={link.href}
+                      className="px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors block"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {link.label}
+                    </Link>
+                  )
                 ))}
                 <Link
                   to={isLoggedIn ? "/profile" : "/login"}

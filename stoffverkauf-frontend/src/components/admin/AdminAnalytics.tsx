@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
 import { BarChart3, TrendingUp, Eye, ShoppingBag, Users, DollarSign, ArrowUpRight, ArrowDownRight, Monitor, Smartphone, Download, AlertTriangle, Package } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import api from "../../../api";
 
 const AdminAnalytics = () => {
   const { lang } = useI18n();
@@ -10,12 +11,71 @@ const AdminAnalytics = () => {
   const [period, setPeriod] = useState("7d");
   const [activeReport, setActiveReport] = useState<"overview" | "inventory" | "tax">("overview");
 
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get("/api/order/admin/analytics", {
+          params: { period }
+        });
+        if (res.data.success) {
+          setData(res.data);
+        } else {
+          toast.error(de ? "Fehler beim Laden der Analysedaten" : "Failed to load analytics data");
+        }
+      } catch (err: any) {
+        console.error("Error fetching analytics:", err);
+        toast.error(de ? "Fehler beim Laden der Analysedaten" : "Failed to load analytics data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activeReport === "overview") {
+      fetchAnalytics();
+    }
+  }, [period, activeReport, de]);
+
   const stats = [
-    { label: de ? "Umsatz" : "Revenue", value: "€12,847", change: "+12.5%", up: true, icon: DollarSign },
-    { label: de ? "Bestellungen" : "Orders", value: "156", change: "+8.2%", up: true, icon: ShoppingBag },
-    { label: de ? "Kunden" : "Customers", value: "2,341", change: "+15.3%", up: true, icon: Users },
-    { label: de ? "Seitenaufrufe" : "Page Views", value: "45,821", change: "-2.1%", up: false, icon: Eye },
+    {
+      label: de ? "Umsatz" : "Revenue",
+      value: data ? data.stats.revenue.value : "€0,00",
+      change: data ? data.stats.revenue.change : "0%",
+      up: data ? data.stats.revenue.up : true,
+      icon: DollarSign,
+      loading: loading
+    },
+    {
+      label: de ? "Bestellungen" : "Orders",
+      value: data ? data.stats.orders.value : "0",
+      change: data ? data.stats.orders.change : "0%",
+      up: data ? data.stats.orders.up : true,
+      icon: ShoppingBag,
+      loading: loading
+    },
+    {
+      label: de ? "Kunden" : "Customers",
+      value: data ? data.stats.customers.value : "0",
+      change: data ? data.stats.customers.change : "0%",
+      up: data ? data.stats.customers.up : true,
+      icon: Users,
+      loading: loading
+    },
+    {
+      label: de ? "Seitenaufrufe" : "Page Views",
+      value: "45.821",
+      change: "N/A",
+      up: true,
+      icon: Eye,
+      loading: false
+    },
   ];
+
+  const topProducts = data?.topProducts || [];
+  const categoryPerformance = data?.categoryPerformance || [];
 
   const revenueData: Record<string, number[]> = {
     "7d": [65, 42, 78, 55, 90, 72, 85],
@@ -23,22 +83,6 @@ const AdminAnalytics = () => {
     "90d": [65, 42, 78, 55, 90, 72, 85, 60, 95, 70, 88, 75],
     "365d": [820, 650, 910, 780, 1020, 890, 960, 840, 1100, 870, 930, 1050],
   };
-
-  const topProducts = [
-    { name: "Schurwolle Flanell Meterware", sales: 42, revenue: 3355.80, category: "Flanell" },
-    { name: "Italienischer Flanell Stoff", sales: 31, revenue: 2476.90, category: "Flanell" },
-    { name: "Premium Schurwolle Flanell", sales: 28, revenue: 2517.20, category: "Schurwolle" },
-    { name: "Feinstrick Italien", sales: 24, revenue: 1917.60, category: "Strickstoffe" },
-    { name: "Designer-Leinen", sales: 19, revenue: 1518.10, category: "Leinen" },
-  ];
-
-  const categoryPerformance = [
-    { name: "Flanell", revenue: 4890.50, orders: 68, pct: 38 },
-    { name: "Schurwolle", revenue: 3210.80, orders: 41, pct: 25 },
-    { name: "Leinen", revenue: 1890.20, orders: 24, pct: 15 },
-    { name: "Jersey", revenue: 1340.70, orders: 19, pct: 10 },
-    { name: de ? "Sonstige" : "Other", revenue: 1515.00, orders: 20, pct: 12 },
-  ];
 
   const topPages = [
     { path: "/", views: 12450, name: de ? "Startseite" : "Homepage" },
@@ -124,13 +168,28 @@ const AdminAnalytics = () => {
                   <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
                     <stat.icon className="w-5 h-5 text-accent" />
                   </div>
-                  <span className={`text-xs font-semibold flex items-center gap-0.5 ${stat.up ? "text-green-500" : "text-destructive"}`}>
-                    {stat.up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                    {stat.change}
-                  </span>
+                  {stat.loading ? (
+                    <div className="h-4 w-12 bg-secondary animate-pulse rounded" />
+                  ) : (
+                    stat.change !== "N/A" && (
+                      <span className={`text-xs font-semibold flex items-center gap-0.5 ${stat.up ? "text-green-500" : "text-destructive"}`}>
+                        {stat.up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                        {stat.change}
+                      </span>
+                    )
+                  )}
                 </div>
-                <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+                {stat.loading ? (
+                  <div className="space-y-2 mt-2 animate-pulse">
+                    <div className="h-8 w-24 bg-secondary rounded" />
+                    <div className="h-3 w-16 bg-secondary rounded" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+                  </>
+                )}
               </motion.div>
             ))}
           </div>
@@ -141,16 +200,38 @@ const AdminAnalytics = () => {
               <TrendingUp className="w-5 h-5 text-accent" />
               {de ? "Umsatzverlauf" : "Revenue Trend"}
             </h3>
-            <div className="flex items-end gap-1 h-48 overflow-hidden">
-              {currentData.map((h, i) => (
-                <motion.div key={i} initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.02, duration: 0.4 }} className="flex-1 bg-accent/10 rounded-t-lg relative group cursor-pointer min-w-[8px]">
-                  <div className="absolute inset-x-0 bottom-0 bg-accent rounded-t-lg transition-all group-hover:opacity-80" style={{ height: `${h}%` }} />
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                    €{Math.round(h * (period === "365d" ? 10 : 18.5))}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            {loading ? (
+              <div className="flex items-end gap-1 h-48 overflow-hidden">
+                {Array.from({ length: period === "7d" ? 7 : period === "30d" ? 30 : 12 }).map((_, i) => (
+                  <div key={i} className="flex-1 bg-secondary animate-pulse rounded-t-lg" style={{ height: `${20 + Math.random() * 60}%` }} />
+                ))}
+              </div>
+            ) : !data || !data.revenueTrend || data.revenueTrend.length === 0 ? (
+              <div className="flex items-center justify-center h-48 text-muted-foreground">
+                {de ? "Keine Umsatzdaten vorhanden" : "No revenue data available"}
+              </div>
+            ) : (
+              <div className="flex items-end gap-1 h-48 overflow-hidden">
+                {(() => {
+                  const trendList = data.revenueTrend || [];
+                  const maxValue = trendList.length > 0 ? Math.max(...trendList.map((d: any) => Number(d.value) || 0), 1) : 1;
+                  return trendList.map((item: any, i: number) => {
+                    const heightPct = ((Number(item.value) || 0) / maxValue) * 100;
+                    const displayHeight = Math.max(heightPct, 4);
+                    return (
+                      <motion.div key={i} initial={{ height: 0 }} animate={{ height: `${displayHeight}%` }} transition={{ delay: i * 0.01, duration: 0.3 }} className="flex-1 bg-accent/10 rounded-t-lg relative group cursor-pointer min-w-[8px]">
+                        <div className="absolute inset-x-0 bottom-0 bg-accent rounded-t-lg transition-all group-hover:opacity-80" style={{ height: `100%` }} />
+                        {/* Floating tooltip */}
+                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-popover border border-border text-popover-foreground text-[10px] px-2 py-1 rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none flex flex-col items-center">
+                          <span className="font-medium text-muted-foreground">{item.label}</span>
+                          <span className="text-accent font-bold">€{Number(item.value || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </motion.div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -159,25 +240,47 @@ const AdminAnalytics = () => {
               <div className="p-5 border-b border-border flex items-center justify-between">
                 <h3 className="font-display text-base font-bold text-foreground">{de ? "Top Produkte" : "Top Products"}</h3>
                 <button onClick={() => handleExport("csv")} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                  <Download className="w-3 h-3" /> CSV
+                  <Download className="w-3.5 h-3.5" /> CSV
                 </button>
               </div>
               <div className="divide-y divide-border">
-                {topProducts.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}.</span>
-                      <div>
-                        <span className="text-sm font-medium text-foreground block">{p.name}</span>
-                        <span className="text-xs text-muted-foreground">{p.category}</span>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 animate-pulse">
+                      <div className="flex items-center gap-3">
+                        <div className="w-5 h-4 bg-secondary rounded" />
+                        <div className="space-y-1">
+                          <div className="h-4 w-40 bg-secondary rounded" />
+                          <div className="h-3 w-20 bg-secondary rounded" />
+                        </div>
+                      </div>
+                      <div className="space-y-1 text-right">
+                        <div className="h-4 w-16 ml-auto bg-secondary rounded" />
+                        <div className="h-3 w-12 ml-auto bg-secondary rounded" />
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-foreground">{p.revenue.toFixed(2)} €</p>
-                      <p className="text-xs text-muted-foreground">{p.sales} {de ? "Verkäufe" : "sales"}</p>
-                    </div>
+                  ))
+                ) : topProducts.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    {de ? "Keine Verkaufsdaten in diesem Zeitraum" : "No sales data in this period"}
                   </div>
-                ))}
+                ) : (
+                  topProducts.map((p: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between p-4 hover:bg-secondary/20 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}.</span>
+                        <div>
+                          <span className="text-sm font-medium text-foreground block">{p.name}</span>
+                          <span className="text-xs text-muted-foreground">{p.category}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-foreground">€{Number(p.revenue || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-xs text-muted-foreground">{p.sales || 0} {de ? "Verkäufe" : "sales"}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -186,17 +289,35 @@ const AdminAnalytics = () => {
               <div className="bg-card rounded-xl border border-border p-5 shadow-card">
                 <h3 className="font-display text-base font-bold text-foreground mb-4">{de ? "Kategorie-Performance" : "Category Performance"}</h3>
                 <div className="space-y-3">
-                  {categoryPerformance.map(c => (
-                    <div key={c.name}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-foreground">{c.name}</span>
-                        <span className="text-xs text-muted-foreground">{c.revenue.toFixed(2)} € · {c.orders} {de ? "Bestellungen" : "orders"}</span>
+                  {loading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="space-y-2 animate-pulse py-1">
+                        <div className="flex items-center justify-between">
+                          <div className="h-4 w-20 bg-secondary rounded" />
+                          <div className="h-4 w-32 bg-secondary rounded" />
+                        </div>
+                        <div className="h-2 w-full bg-secondary rounded" />
                       </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-accent rounded-full" style={{ width: `${c.pct}%` }} />
-                      </div>
+                    ))
+                  ) : categoryPerformance.length === 0 ? (
+                    <div className="py-4 text-center text-muted-foreground text-xs">
+                      {de ? "Keine Kategoriedaten vorhanden" : "No category data available"}
                     </div>
-                  ))}
+                  ) : (
+                    categoryPerformance.map((c: any) => (
+                      <div key={c.name} className="group">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-foreground">{c.name}</span>
+                          <span className="text-xs text-muted-foreground transition-colors group-hover:text-foreground">
+                            €{Number(c.revenue || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · {c.orders || 0} {de ? "Bestellungen" : "orders"}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${c.pct}%` }} transition={{ duration: 0.5, ease: "easeOut" }} className="h-full bg-accent rounded-full" />
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
