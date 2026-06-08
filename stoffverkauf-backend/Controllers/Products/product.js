@@ -79,32 +79,90 @@ exports.getProducts = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || "";
+    const categories = req.query.categories ? req.query.categories.split(",") : [];
+    const badges = req.query.badges ? req.query.badges.split(",") : [];
+    const minPrice = parseFloat(req.query.minPrice);
+    const maxPrice = parseFloat(req.query.maxPrice);
+    const inStock = req.query.inStock === "true";
+    const sortBy = req.query.sortBy || "relevance";
 
     const skip = (page - 1) * limit;
 
-    // Search filter
-    const filter = search
-      ? {
-          $or: [
-            { name: { $regex: search, $options: "i" } },
-            { category: { $regex: search, $options: "i" } },
-            { sku: { $regex: search, $options: "i" } }
-          ]
+    const filter = {};
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
+        { sku: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    if (categories.length > 0) {
+      filter.category = { $in: categories };
+    }
+
+    if (badges.length > 0) {
+      filter.badge = { $in: badges };
+    }
+
+    if (inStock) {
+      filter.inStock = { $ne: false };
+    }
+
+    if (!isNaN(minPrice) || !isNaN(maxPrice)) {
+      filter.$expr = {
+        $and: []
+      };
+      // If salePrice exists and > 0, use it, else use price
+      const effectivePrice = {
+        $cond: {
+          if: { $and: [{ $gt: ["$salePrice", 0] }, { $ne: ["$salePrice", null] }] },
+          then: "$salePrice",
+          else: "$price"
         }
-      : {};
+      };
+
+      if (!isNaN(minPrice)) {
+        filter.$expr.$and.push({ $gte: [effectivePrice, minPrice] });
+      }
+      if (!isNaN(maxPrice)) {
+        filter.$expr.$and.push({ $lte: [effectivePrice, maxPrice] });
+      }
+      if (filter.$expr.$and.length === 0) {
+        delete filter.$expr;
+      }
+    }
+
+    console.log("Applying filter in getProducts:", JSON.stringify(filter, null, 2));
+    console.log("Query params:", req.query);
+
+    let sortObj = { images: -1, createdAt: -1 };
+    switch (sortBy) {
+      case "price-asc":
+        sortObj = { salePrice: 1, price: 1 };
+        break;
+      case "price-desc":
+        sortObj = { salePrice: -1, price: -1 };
+        break;
+      case "rating":
+        sortObj = { rating: -1 };
+        break;
+      case "reviews":
+        sortObj = { reviews: -1 };
+        break;
+      case "relevance":
+      default:
+        sortObj = { images: -1, createdAt: -1 };
+        break;
+    }
 
     const totalProducts = await Product.countDocuments(filter);
 
     const products = await Product.find(filter)
-      // .sort({ createdAt: -1 })
-        .sort({
-    images: -1,       
-    createdAt: -1,   
-  })
-
+      .sort(sortObj)
       .skip(skip)
       .limit(limit);
-
 
     res.status(200).json({
       success: true,

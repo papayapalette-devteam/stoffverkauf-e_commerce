@@ -245,7 +245,7 @@ useEffect(() => {
             {/* CONTENT */}
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                {t(`cat.${product.category}` as TranslationKey)}
+                {t(`${product.category}` as TranslationKey)}
               </p>
 
               <h3 className="font-body font-semibold text-foreground text-sm lg:text-base">

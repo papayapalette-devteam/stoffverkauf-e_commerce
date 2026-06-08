@@ -25,6 +25,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([priceMin, priceMax]);
   
   const [dbProducts, setDbProducts] = useState<Product[]>([]);
@@ -37,39 +38,91 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
   const [showFilters, setShowFilters] = useState(true);
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "inStock">("all");
 
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [query]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, activeCategories, activeBadges, availabilityFilter, priceRange, sortBy]);
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
       document.body.style.overflow = "hidden";
       
-      // Fetch dynamic data
-      const fetchData = async () => {
+      // Fetch metadata (categories, badges)
+      const fetchMetaData = async () => {
         try {
-          const [prodRes, catRes, badgeRes] = await Promise.all([
-            api.get("/api/products/get-product?limit=1000"),
+          const [catRes, badgeRes] = await Promise.all([
             api.get("/api/category/get-categories"),
             api.get("/api/products/get-badges")
           ]);
           
-          if (prodRes.data.success) setDbProducts(prodRes.data.products);
-          if (catRes.data.success) {
+          if (catRes.data && catRes.data.categories) {
             const names = catRes.data.categories
               .filter((c: any) => c.enabled)
               .map((c: any) => c.name);
             setDbCategories(names);
           }
-          if (badgeRes.data.success) setDbBadges(badgeRes.data.badges);
+          if (badgeRes.data && badgeRes.data.badges) {
+             setDbBadges(badgeRes.data.badges);
+          }
         } catch (error) {
-          console.error("Error fetching dynamic search data:", error);
+          console.error("Error fetching meta data:", error);
         }
       };
       
-      fetchData();
+      fetchMetaData();
     } else {
       document.body.style.overflow = "";
     }
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: "10",
+          search: debouncedQuery,
+          sortBy
+        });
+
+        if (activeCategories.length > 0) params.append("categories", activeCategories.join(","));
+        if (activeBadges.length > 0) params.append("badges", activeBadges.join(","));
+        if (availabilityFilter === "inStock") params.append("inStock", "true");
+        if (priceRange[0] > priceMin) params.append("minPrice", priceRange[0].toString());
+        if (priceRange[1] < priceMax) params.append("maxPrice", priceRange[1].toString());
+
+        const res = await api.get(`/api/products/get-product?${params.toString()}`);
+        if (res.data.success) {
+          setDbProducts(res.data.products);
+          setTotalPages(res.data.totalPages);
+          setTotalResults(res.data.totalProducts);
+        }
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [isOpen, debouncedQuery, activeCategories, activeBadges, availabilityFilter, priceRange, sortBy, page]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -98,45 +151,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
     return counts;
   }, [dbBadges, dbProducts]);
 
-  const filtered = useMemo(() => {
-    let result = [...dbProducts];
-
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
-          (p.badge && p.badge.toLowerCase().includes(q))
-      );
-    }
-
-    if (activeCategories.length > 0) {
-      result = result.filter((p) => activeCategories.includes(p.category));
-    }
-
-    if (activeBadges.length > 0) {
-      result = result.filter((p) => activeBadges.includes(p.badge));
-    }
-
-    if (availabilityFilter === "inStock") {
-      result = result.filter((p) => p.inStock !== false);
-    }
-
-    result = result.filter((p) => {
-      const price = p.salePrice || p.price;
-      return price >= priceRange[0] && price <= priceRange[1];
-    });
-
-    switch (sortBy) {
-      case "price-asc": result.sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price)); break;
-      case "price-desc": result.sort((a, b) => (b.salePrice || b.price) - (a.salePrice || a.price)); break;
-      case "rating": result.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
-      case "reviews": result.sort((a, b) => (b.reviews || 0) - (a.reviews || 0)); break;
-    }
-
-    return result;
-  }, [query, dbProducts, activeCategories, activeBadges, priceRange, sortBy, availabilityFilter]);
+  const filtered = dbProducts;
 
   const sortOptions: { value: SortOption; label: string }[] = [
     { value: "relevance", label: lang === "de" ? "Relevanz" : "Relevance" },
@@ -157,6 +172,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
     setPriceRange([priceMin, priceMax]);
     setSortBy("relevance");
     setAvailabilityFilter("all");
+    setPage(1);
   };
 
   const getLabel = (prefix: string, value: string) => {
@@ -469,7 +485,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
               <div className="container mx-auto px-4 lg:px-8 py-6">
                 <div className="flex items-center justify-between mb-6">
                   <p className="text-sm text-muted-foreground">
-                    {filtered.length} {lang === "de" ? "Ergebnisse" : "results"}
+                    {totalResults} {lang === "de" ? "Ergebnisse" : "results"}
                     {query && (
                       <span>
                         {" "}{lang === "de" ? "für" : "for"} <strong className="text-foreground">"{query}"</strong>
@@ -520,70 +536,95 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filtered.map((product, i) => {
-                      const wishlisted = isInWishlist(product._id);
-                      return (
-                        <motion.div
-                          key={product._id}
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.03 }}
-                          className="group"
-                        >
-                          <Link
-                            to={`/product/${product._id}`}
-                            onClick={onClose}
-                            className="block relative aspect-square rounded-xl overflow-hidden bg-secondary mb-2"
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {filtered.map((product, i) => {
+                        const wishlisted = isInWishlist(product._id);
+                        return (
+                          <motion.div
+                            key={product._id}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.03 }}
+                            className="group"
                           >
-                            <img
-                              src={product.images && product.images.length > 0 ? product.images[0] : ""}
-                              alt={product.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                            {product.badge && (
-                              <span className="absolute top-2 left-2 bg-accent text-accent-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                                {getLabel("badge", product.badge)}
-                              </span>
-                            )}
-                            <button
-                               onClick={(e) => { e.preventDefault(); toggleItem(product); }}
-                               className={`absolute top-2 right-2 p-1.5 rounded-full transition-all ${
-                                 wishlisted ? "bg-destructive text-destructive-foreground opacity-100" : "bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100"
-                               }`}
+                            <Link
+                              to={`/product/${product._id}`}
+                              onClick={onClose}
+                              className="block relative aspect-square rounded-xl overflow-hidden bg-secondary mb-2"
                             >
-                              <Heart className={`w-3.5 h-3.5 ${wishlisted ? "fill-current" : ""}`} />
-                            </button>
-                            <button
-                              onClick={(e) => { e.preventDefault(); addItem(product); }}
-                              className="absolute bottom-2 right-2 bg-primary text-primary-foreground p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-elevated"
-                            >
-                              <ShoppingBag className="w-3.5 h-3.5" />
-                            </button>
-                          </Link>
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                              {getLabel("cat", product.category)}
-                            </p>
-                            <h3 className="font-body font-semibold text-foreground text-xs lg:text-sm leading-tight">
-                              {product.name}
-                            </h3>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-body font-bold text-foreground text-sm">{(product.salePrice || product.price).toFixed(2)} €</p>
-                                {product.width && (
-                                  <p className="text-[10px] text-muted-foreground">{product.width}</p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-0.5">
-                                <Star className="w-3 h-3 fill-accent text-accent" />
-                                <span className="text-[10px] text-muted-foreground">{product.rating || 0}</span>
+                              <img
+                                src={product.images && product.images.length > 0 ? product.images[0] : ""}
+                                alt={product.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              {product.badge && (
+                                <span className="absolute top-2 left-2 bg-accent text-accent-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                                  {getLabel("badge", product.badge)}
+                                </span>
+                              )}
+                              <button
+                                 onClick={(e) => { e.preventDefault(); toggleItem(product); }}
+                                 className={`absolute top-2 right-2 p-1.5 rounded-full transition-all ${
+                                   wishlisted ? "bg-destructive text-destructive-foreground opacity-100" : "bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100"
+                                 }`}
+                              >
+                                <Heart className={`w-3.5 h-3.5 ${wishlisted ? "fill-current" : ""}`} />
+                              </button>
+                              <button
+                                onClick={(e) => { e.preventDefault(); addItem(product); }}
+                                className="absolute bottom-2 right-2 bg-primary text-primary-foreground p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-elevated"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5" />
+                              </button>
+                            </Link>
+                            <div className="space-y-0.5">
+                              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                                {getLabel("cat", product.category)}
+                              </p>
+                              <h3 className="font-body font-semibold text-foreground text-xs lg:text-sm leading-tight">
+                                {product.name}
+                              </h3>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-body font-bold text-foreground text-sm">{(product.salePrice || product.price).toFixed(2)} €</p>
+                                  {product.width && (
+                                    <p className="text-[10px] text-muted-foreground">{product.width}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-0.5">
+                                  <Star className="w-3 h-3 fill-accent text-accent" />
+                                  <span className="text-[10px] text-muted-foreground">{product.rating || 0}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-4 mt-8 pb-4">
+                        <button
+                          onClick={() => setPage(p => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                          className="px-4 py-2 text-sm font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {lang === "de" ? "Zurück" : "Previous"}
+                        </button>
+                        <span className="text-sm text-muted-foreground font-medium">
+                          {lang === "de" ? "Seite" : "Page"} {page} {lang === "de" ? "von" : "of"} {totalPages}
+                        </span>
+                        <button
+                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                          disabled={page === totalPages}
+                          className="px-4 py-2 text-sm font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {lang === "de" ? "Weiter" : "Next"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
