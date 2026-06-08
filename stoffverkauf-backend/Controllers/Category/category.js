@@ -71,7 +71,7 @@ exports.saveCategory = async (req, res) => {
 exports.getCategories = async (req, res) => {
   try {
 
-    let { page = 1, limit = 10, search = "" } = req.query;
+    let { page = 1, limit = 20, search = "" } = req.query;
 
     page = parseInt(page);
     limit = parseInt(limit);
