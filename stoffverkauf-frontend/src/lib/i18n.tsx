@@ -4,8 +4,10 @@ export type Lang = "de" | "en";
 
 const translations = {
   // Navbar
-  "nav.kategorien": { de: "Kategorien", en: "Premium" },
-  "nav.bestseller": { de: "Bestseller", en: "Bestsellers" },
+  "nav.home": { de: "Startseite", en: "Home" },
+  "nav.about": { de: "Über Uns", en: "About" },
+  "nav.contact": { de: "Kontakt", en: "Contact" },
+  "nav.shop": { de: "Shop", en: "Shop" },
   "nav.stoffe": { de: "Stoffe", en: "Fabrics" },
   "nav.angebote": { de: "Angebote", en: "Offers" },
   "nav.search": { de: "Stoffe suchen...", en: "Search fabrics..." },
@@ -122,14 +124,14 @@ const translations = {
 
   // Footer
   "footer.desc": {
-    de: "Hochwertige italienische Modestoffe als Meterware. Qualität seit 40 Jahren.",
-    en: "Premium Italian fashion fabrics by the meter. Quality for 40 years.",
+    de: "Ihr Premium Online Stoffshop",
+    en: "Your Premium Online Fabric Shop",
   },
   "footer.products": { de: "Produkte", en: "Products" },
   "footer.about": { de: "Über uns", en: "About Us" },
   "footer.service": { de: "Service", en: "Service" },
   "footer.legal": { de: "Rechtliches", en: "Legal" },
-  "footer.rights": { de: "Alle Rechte vorbehalten.", en: "All rights reserved." },
+  "footer.rights": { de: "| Alle Rechte vorbehalten", en: "| All Rights Reserved" },
 
   // Footer links
   "footer.stoffe": { de: "Stoffe", en: "Fabrics" },

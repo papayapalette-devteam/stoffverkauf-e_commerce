@@ -57,8 +57,9 @@ const Footer = () => {
               {t("footer.desc")}
             </p>
             <p className="text-xs text-muted-foreground mt-3 font-body">
-              {settings.general.phone && <>Tel: {settings.general.phone}<br /></>}
-              {settings.general.email && <>{settings.general.email}</>}
+              {/* {settings.general.phone && <>VAT ID: : {settings.general.phone}<br /></>}
+              {settings.general.email && <>{settings.general.email}</>} */}
+              {lang === "de" ? "Umsatzsteuer-Identnr: DE111273832" : "VAT ID: DE111273832"}
             </p>
           </div>
 

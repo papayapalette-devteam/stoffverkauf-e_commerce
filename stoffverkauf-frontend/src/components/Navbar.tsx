@@ -19,9 +19,11 @@ const Navbar = () => {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const navLinks = [
-    { label: t("nav.kategorien"), href: "/#kategorien" },
-    { label: t("nav.bestseller"), href: "/#bestseller" },
-    { label: t("nav.stoffe"), href: "/#stoffe" },
+    { label: t("nav.home"), href: "/" },
+    { label: t("nav.about"), href: "/about" },
+    { label: t("nav.contact"), href: "/contact" },
+    // { label: t("nav.stoffe"), href: "/#stoffe" },
+    { label: t("nav.shop"), href: "/#kategorien" },
     { label: t("nav.angebote"), href: "/offers" },
   ];
 

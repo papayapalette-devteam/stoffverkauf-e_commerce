@@ -29,18 +29,18 @@ const About = () => {
         <section className="bg-hero-gradient py-20 lg:py-28">
           <div className="container mx-auto px-4 lg:px-8 text-center max-w-3xl">
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="font-display text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              {lang === "de" ? "Über Stoffverkauf Weber" : "About Stoffverkauf Weber"}
+              {lang === "de" ? "ÜBER UNS" : "ABOUT US"}
             </motion.h1>
-            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg text-muted-foreground leading-relaxed">
+            {/* <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg text-muted-foreground leading-relaxed">
               {lang === "de"
                 ? "Seit Jahren sind wir Ihr verlässlicher Partner für hochwertige italienische Designerstoffe. Unser Sortiment umfasst Flanell, Schurwolle, Jersey und vieles mehr — immer direkt aus den besten Webereien Italiens."
                 : "For years, we've been your reliable partner for premium Italian designer fabrics. Our range includes flannel, virgin wool, jersey and much more — always directly from Italy's finest mills."}
-            </motion.p>
+            </motion.p> */}
           </div>
         </section>
 
         {/* Values */}
-        <section className="py-16 lg:py-24">
+        {/* <section className="py-16 lg:py-24">
           <div className="container mx-auto px-4 lg:px-8">
             <h2 className="font-display text-3xl font-bold text-foreground text-center mb-12">
               {lang === "de" ? "Unsere Werte" : "Our Values"}
@@ -64,28 +64,74 @@ const About = () => {
               ))}
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* Story */}
-        <section className="bg-secondary py-16 lg:py-24">
-          <div className="container mx-auto px-4 lg:px-8 max-w-3xl">
-            <h2 className="font-display text-3xl font-bold text-foreground text-center mb-8">
-              {lang === "de" ? "Unsere Geschichte" : "Our Story"}
-            </h2>
-            <div className="space-y-4 text-muted-foreground leading-relaxed font-body">
-              <p>
-                {lang === "de"
-                  ? "Stoffverkauf Weber wurde aus der Leidenschaft für hochwertige Textilien gegründet. Was als kleines Ladengeschäft in Oberursel begann, hat sich zu einem renommierten Anlaufpunkt für Schneider, Designer und Hobbyschneiderinnen entwickelt."
-                  : "Stoffverkauf Weber was founded from a passion for premium textiles. What started as a small shop in Oberursel has grown into a renowned destination for tailors, designers, and hobby sewers."}
-              </p>
-              <p>
-                {lang === "de"
-                  ? "Wir reisen regelmäßig nach Italien, um die neuesten Trends und besten Qualitäten direkt von den Webereien zu sourced. Unser Ziel: Ihnen die beste Auswahl an Designerstoffen zu fairen Preisen zu bieten."
-                  : "We regularly travel to Italy to source the latest trends and best qualities directly from the mills. Our goal: to offer you the finest selection of designer fabrics at fair prices."}
-              </p>
-            </div>
-          </div>
-        </section>
+<section className="bg-secondary py-16 lg:py-24">
+  <div className="container mx-auto px-4 lg:px-8 max-w-4xl">
+    {/* <h2 className="font-display text-3xl font-bold text-foreground text-center mb-8">
+      {lang === "de" ? "Über Stoffverkauf Weber" : "About Stoffverkauf Weber"}
+    </h2> */}
+
+    <div className="space-y-6 text-muted-foreground leading-relaxed font-body">
+      <p>
+        {lang === "de"
+          ? 'Seit mehr als 35 Jahren führen wir ein weitreichendes Sortiment an original italienischen Designerstoffen und internationalen Modestoffen. Unsere Kollektionen werden zweimal jährlich in Mailand, Paris, New York und London präsentiert.'
+          : 'For more than 35 years, we have offered an extensive range of original Italian designer fabrics and international fashion fabrics. Our collections are presented twice yearly in Milan, Paris, New York, and London.'}
+      </p>
+
+      <p>
+        {lang === "de"
+          ? 'Unsere Devise: "Lieber weniger, dafür gute Qualität" – Wir sind spezialisiert auf hochwertige Meterware für Bekleidung, Haute-Couture-Stoffe und exklusive Designerstoffe aus Überproduktion.'
+          : 'Our Philosophy: "Less but better quality" – We specialize in high-quality meter fabrics for clothing, haute couture materials, and exclusive designer fabrics from overproduction.'}
+      </p>
+
+      <div>
+        <h3 className="font-semibold text-foreground mb-3">
+          {lang === "de" ? "✨ Was Wir Bieten:" : "✨ What We Offer:"}
+        </h3>
+
+        <ul className="space-y-2 list-disc pl-5">
+          {lang === "de" ? (
+            <>
+              <li>Italienische Haute-Couture-Stoffe</li>
+              <li>Exklusive Designerstoffe (Jacquard, Seide, Wolle, Kaschmir)</li>
+              <li>Französische Spitzen und Applikationen</li>
+              <li>Baumwolle, Leinen, Viskose und Microfaser-Stoffe</li>
+              <li>Nähzubehör, Schnitte und Kurzwaren</li>
+            </>
+          ) : (
+            <>
+              <li>Italian haute couture fabrics</li>
+              <li>Exclusive designer fabrics (jacquard, silk, wool, cashmere)</li>
+              <li>French lace and appliqués</li>
+              <li>Cotton, linen, viscose, and microfiber fabrics</li>
+              <li>Sewing accessories, patterns, and haberdashery</li>
+            </>
+          )}
+        </ul>
+      </div>
+
+      <p>
+        {lang === "de"
+          ? "📍 Unser Standort in 61440 Oberursel zieht Käufer aus ganz Deutschland an."
+          : "📍 Our location in 61440 Oberursel attracts buyers from all across Germany."}
+      </p>
+
+      <p>
+        {lang === "de"
+          ? "📺 Zu unserem 25-jährigen Jubiläum hat Rhein-Main TV eine Reportage über uns gemacht."
+          : "📺 At our 25th anniversary, Rhein-Main TV created a special reportage about our story."}
+      </p>
+
+      <p className="font-medium text-foreground text-lg">
+        {lang === "de"
+          ? "Schön, dass Sie uns gefunden haben. Lassen Sie sich begeistern!"
+          : "Beautiful that you've found us. Let us inspire you!"}
+      </p>
+    </div>
+  </div>
+</section>
       </main>
       <Footer />
       <CartDrawer />

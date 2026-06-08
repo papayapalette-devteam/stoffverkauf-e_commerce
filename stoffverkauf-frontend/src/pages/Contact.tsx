@@ -13,12 +13,88 @@ const Contact = () => {
   const { settings } = useSettings();
   const [submitted, setSubmitted] = useState(false);
 
-  const info = [
-    { icon: Phone, label: lang === "de" ? "Telefon" : "Phone", value: settings.general.phone || "06171/53159" },
-    { icon: Mail, label: "E-Mail", value: settings.general.email || "info@stoffverkauf-weber.de" },
-    { icon: MapPin, label: lang === "de" ? "Adresse" : "Address", value: settings.general.address || "Oberursel, Deutschland" },
-    { icon: Clock, label: lang === "de" ? "Öffnungszeiten" : "Hours", value: lang === "de" ? "Mo-Fr: 10-18 Uhr, Sa: 10-14 Uhr" : "Mon-Fri: 10am-6pm, Sat: 10am-2pm" },
-  ];
+
+const info = [
+  {
+    icon: Phone,
+    label: lang === "de" ? "Telefon" : "Phone",
+    value: "06171-53159",
+  },
+  {
+    icon: Phone,
+    label: "Fax",
+    value: "06171-53576",
+  },
+  {
+    icon: Mail,
+    label: "E-Mail",
+    value: "stoffverkauf-weber@t-online.de",
+  },
+  {
+    icon: Mail,
+    label: "Info",
+    value: "info@stoffverkauf-weber.de",
+  },
+  {
+    icon: MapPin,
+    label: lang === "de" ? "Adresse" : "Address",
+    value: (
+      <>
+        Stoffverkauf Hilde Weber
+        <br />
+        Oberhöchstadter Str. 14
+        <br />
+        61440 Oberursel, {lang === "de" ? "Deutschland" : "Germany"}
+      </>
+    ),
+  },
+  {
+    icon: Clock,
+    label: lang === "de" ? "Öffnungszeiten" : "Opening Hours",
+    value:
+      lang === "de" ? (
+        <>
+          Montag: 10:00–13:00, 15:00–18:00
+          <br />
+          Dienstag: 15:00–18:00
+          <br />
+          Mittwoch: 10:00–13:00, 15:00–18:00
+          <br />
+          Donnerstag: 15:00–18:00
+          <br />
+          Freitag: 10:00–13:00
+          <br />
+          Samstag: 10:00–13:00
+          <br />
+          Sonntag: geschlossen
+          <br />
+          <br />
+          ⚠️ Zwischen den Jahren geschlossen
+        </>
+      ) : (
+        <>
+          Monday: 10:00–13:00, 15:00–18:00
+          <br />
+          Tuesday: 15:00–18:00
+          <br />
+          Wednesday: 10:00–13:00, 15:00–18:00
+          <br />
+          Thursday: 15:00–18:00
+          <br />
+          Friday: 10:00–13:00
+          <br />
+          Saturday: 10:00–13:00
+          <br />
+          Sunday: Closed
+          <br />
+          <br />
+          ⚠️ Closed between Christmas and New Year
+        </>
+      ),
+  },
+];
+
+
 
   return (
     <div className="min-h-screen flex flex-col">
