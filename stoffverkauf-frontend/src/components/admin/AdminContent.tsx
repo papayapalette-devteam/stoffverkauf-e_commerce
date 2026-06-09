@@ -47,13 +47,7 @@ const AdminContent = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [loadingSections, setLoadingSections] = useState(true);
   const [heroForm, setHeroForm] = useState<any>({
-    badge: "",
-    title1: "",
-    title2: "",
-    subtitle: "",
-    cta1: "",
-    cta2: "",
-    images: [] // array of image URLs
+    slides: [] // array of { image, badge, title1, title2, subtitle, cta }
   });
 
   // Blog state
@@ -91,7 +85,23 @@ const AdminContent = () => {
       const res = await api.get("/api/home-sections");
       const hero = res.data.find((s: any) => s.id === "hero");
       if (hero && hero.data) {
-        setHeroForm(hero.data);
+        if (hero.data.slides) {
+          setHeroForm(hero.data);
+        } else if (hero.data.images) {
+          // Backward compatibility migration
+          setHeroForm({
+            slides: hero.data.images.map((img: string) => ({
+              image: img,
+              badge: hero.data.badge || "",
+              title1: hero.data.title1 || "",
+              title2: hero.data.title2 || "",
+              subtitle: hero.data.subtitle || "",
+              cta: hero.data.cta1 || ""
+            }))
+          });
+        } else {
+          setHeroForm({ slides: [] });
+        }
       }
     } catch (err) {
       console.error("Failed to fetch hero data", err);
@@ -108,7 +118,17 @@ const AdminContent = () => {
       if (urls && urls.length > 0) {
         setHeroForm((prev: any) => ({
           ...prev,
-          images: [...(prev.images || []), ...urls]
+          slides: [
+            ...(prev.slides || []),
+            ...urls.map((url: string) => ({
+              image: url,
+              badge: "",
+              title1: "",
+              title2: "",
+              subtitle: "",
+              cta: ""
+            }))
+          ]
         }));
         toast.success(de ? "Bilder hochgeladen" : "Images uploaded");
       }
@@ -122,7 +142,7 @@ const AdminContent = () => {
   const removeHeroImage = (index: number) => {
     setHeroForm((prev: any) => ({
       ...prev,
-      images: prev.images.filter((_: any, i: number) => i !== index)
+      slides: (prev.slides || []).filter((_: any, i: number) => i !== index)
     }));
   };
 
@@ -406,54 +426,86 @@ const handleDeletePost = async (id: string) => {
                 </label>
              </div>
 
-             {/* Image Preview Grid */}
-             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-               {heroForm.images?.map((url: string, index: number) => (
-                 <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border border-border bg-muted">
-                    <img src={url} alt={`Hero ${index}`} className="w-full h-full object-cover" />
+             {/* Slide Preview and Edit List */}
+             <div className="space-y-6">
+               {heroForm.slides?.map((slide: any, index: number) => (
+                 <div key={index} className="relative p-4 border border-border bg-background rounded-xl shadow-sm">
                     <button 
                       onClick={() => removeHeroImage(index)}
-                      className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 p-1.5 bg-destructive text-white rounded-full transition-opacity z-10 hover:bg-destructive/90 shadow-md"
+                      title={de ? "Entfernen" : "Remove"}
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-4 h-4" />
                     </button>
+                    
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* Image Preview */}
+                      <div className="w-full md:w-1/3 aspect-video rounded-lg overflow-hidden border border-border bg-muted shrink-0">
+                        <img src={slide.image} alt={`Hero ${index}`} className="w-full h-full object-cover" />
+                      </div>
+                      
+                      {/* Fields */}
+                      <div className="flex-1 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-foreground block mb-1">Badge</label>
+                            <input 
+                              value={slide.badge || ""} 
+                              onChange={e => {
+                                const newSlides = [...heroForm.slides];
+                                newSlides[index] = { ...newSlides[index], badge: e.target.value };
+                                setHeroForm({...heroForm, slides: newSlides});
+                              }} 
+                              className={inputClass} 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-foreground block mb-1">Title</label>
+                            <input 
+                              value={slide.title2 || ""} 
+                              onChange={e => {
+                                const newSlides = [...heroForm.slides];
+                                newSlides[index] = { ...newSlides[index], title2: e.target.value };
+                                setHeroForm({...heroForm, slides: newSlides});
+                              }} 
+                              className={inputClass} 
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-foreground block mb-1">Sub Title</label>
+                            <input 
+                              value={slide.subtitle || ""} 
+                              onChange={e => {
+                                const newSlides = [...heroForm.slides];
+                                newSlides[index] = { ...newSlides[index], subtitle: e.target.value };
+                                setHeroForm({...heroForm, slides: newSlides});
+                              }} 
+                              className={inputClass} 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-foreground block mb-1">CTA Button Text</label>
+                            <input 
+                              value={slide.cta || ""} 
+                              onChange={e => {
+                                const newSlides = [...heroForm.slides];
+                                newSlides[index] = { ...newSlides[index], cta: e.target.value };
+                                setHeroForm({...heroForm, slides: newSlides});
+                              }} 
+                              className={inputClass} 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                  </div>
                ))}
              </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-1">Badge</label>
-                <input value={heroForm.badge} onChange={e => setHeroForm({...heroForm, badge: e.target.value})} className={inputClass} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-1">Title 1</label>
-                <input value={heroForm.title1} onChange={e => setHeroForm({...heroForm, title1: e.target.value})} className={inputClass} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-1">Title 2</label>
-                <input value={heroForm.title2} onChange={e => setHeroForm({...heroForm, title2: e.target.value})} className={inputClass} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-1">Sub Title</label>
-                <input value={heroForm.subtitle} onChange={e => setHeroForm({...heroForm, subtitle: e.target.value})} className={inputClass} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-1">CTA 1 Text</label>
-                <input value={heroForm.cta1} onChange={e => setHeroForm({...heroForm, cta1: e.target.value})} className={inputClass} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-1">CTA 2 Text</label>
-                <input value={heroForm.cta2} onChange={e => setHeroForm({...heroForm, cta2: e.target.value})} className={inputClass} />
-              </div>
-            </div>
-            
+          <div className="mt-6">
             <button onClick={saveHeroData} className="bg-primary text-primary-foreground w-full py-3 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
               {de ? "Aktualisieren" : "Update Hero Banner"}
             </button>

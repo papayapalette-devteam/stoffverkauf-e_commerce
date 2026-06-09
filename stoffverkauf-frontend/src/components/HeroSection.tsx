@@ -7,6 +7,7 @@ import heroBanner from "@/assets/hero-banner.jpg";
 import hero1 from "@/assets/hero-1.png";
 import hero2 from "@/assets/hero-2.png";
 
+
 const staticSlides = [
   { image: heroBanner, key: "main" },
   { image: hero1, key: "hero1" },
@@ -22,6 +23,10 @@ const HeroSection = () => {
     const fetchHero = async () => {
       try {
         const res = await api.get("/api/home-sections");
+
+        console.log(res);
+        
+
         const hero = res.data.find((s: any) => s.id === "hero");
         if (hero && hero.enabled && hero.data) {
           setHeroData(hero.data);
@@ -33,9 +38,19 @@ const HeroSection = () => {
     fetchHero();
   }, []);
 
-  const slides = heroData?.images?.length > 0 
-    ? heroData.images.map((img: string, i: number) => ({ image: img, key: `dynamic-${i}` }))
-    : staticSlides;
+  const slides = heroData?.slides?.length > 0
+    ? heroData.slides.map((s: any, i: number) => ({ ...s, key: `dynamic-${i}` }))
+    : heroData?.images?.length > 0 
+      ? heroData.images.map((img: string, i: number) => ({ 
+          image: img, 
+          badge: heroData.badge,
+          title1: heroData.title1,
+          title2: heroData.title2,
+          subtitle: heroData.subtitle,
+          cta: heroData.cta1,
+          key: `dynamic-${i}` 
+        }))
+      : staticSlides;
 
   const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), [slides.length]);
   const prev = useCallback(() => setCurrent((c) => (c - 1 + slides.length) % slides.length), [slides.length]);
@@ -59,7 +74,7 @@ const HeroSection = () => {
         >
           <img
             src={slides[current].image}
-            alt={heroData?.title2 || t("hero.title2")}
+            alt={slides[current]?.title2 || heroData?.title2 || t("hero.title2")}
             className="w-full h-full object-cover"
             loading={current === 0 ? "eager" : "lazy"}
           />
@@ -69,43 +84,40 @@ const HeroSection = () => {
 
       {/* Content */}
       <div className="relative container mx-auto px-4 lg:px-8 py-24 sm:py-32 lg:py-44">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="max-w-2xl"
-        >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`content-${slides[current].key}`}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="max-w-2xl"
+          >
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
             className="inline-block text-sm font-medium tracking-widest uppercase text-primary-foreground/80 mb-4"
           >
-            {heroData?.badge || t("hero.badge")}
+            {slides[current]?.badge?.trim() ? slides[current].badge : t("hero.badge")}
           </motion.span>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold text-primary-foreground leading-tight mb-6">
-            {heroData?.title1 || t("hero.title1")}
-            <br />
-            <span className="italic">{heroData?.title2 || t("hero.title2")}</span>
+          
+            <span className="italic">{slides[current]?.title2?.trim() ? slides[current].title2 : t("hero.title2")}</span>
           </h1>
           <p className="text-lg sm:text-xl text-primary-foreground/80 font-body mb-8 max-w-lg">
-            {heroData?.subtitle || t("hero.subtitle")}
+            {slides[current]?.subtitle?.trim() ? slides[current].subtitle : t("hero.subtitle")}
           </p>
           <div className="flex flex-wrap gap-4">
             <a
               href="/#shop"
               className="inline-flex items-center gap-2 bg-primary-foreground text-primary px-8 py-4 rounded-lg font-body font-semibold text-sm hover:opacity-90 transition-opacity"
             >
-              {heroData?.cta1 || t("hero.cta")} <ArrowRight className="w-4 h-4" />
-            </a>
-            <a
-              href="/#categories"
-              className="inline-flex items-center gap-2 border border-primary-foreground/30 text-primary-foreground px-8 py-4 rounded-lg font-body font-semibold text-sm hover:bg-primary-foreground/10 transition-colors"
-            >
-              {heroData?.cta2 || t("hero.cta2")}
+              {slides[current]?.cta && slides[current].cta.trim() !== "" ? slides[current].cta :""} <ArrowRight className="w-4 h-4" />
             </a>
           </div>
-        </motion.div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Navigation arrows */}

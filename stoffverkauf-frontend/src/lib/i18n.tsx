@@ -233,9 +233,7 @@ function detectLanguage(): Lang {
   const saved = localStorage.getItem("lang");
   if (saved === "de" || saved === "en") return saved;
 
-  // Auto-detect from browser locale
-  const browserLang = navigator.language || (navigator as any).userLanguage || "";
-  if (browserLang.startsWith("de")) return "de";
+  // Default to 'de' for everyone
   return "de";
 }
 
