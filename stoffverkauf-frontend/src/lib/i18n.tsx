@@ -236,7 +236,7 @@ function detectLanguage(): Lang {
   // Auto-detect from browser locale
   const browserLang = navigator.language || (navigator as any).userLanguage || "";
   if (browserLang.startsWith("de")) return "de";
-  return "en";
+  return "de";
 }
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
