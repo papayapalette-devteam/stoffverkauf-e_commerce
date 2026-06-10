@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Search, Eye, Mail, Phone, MapPin, X, Calendar } from "lucide-react";
+import { Search, Eye, Mail, Phone, MapPin, X, Calendar, Trash2 } from "lucide-react";
 import api from "../../../api";
 import axios from "axios";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ const AdminCustomers = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Fetch Customers
   const fetchCustomers = async () => {
@@ -79,6 +80,20 @@ const AdminCustomers = () => {
       toast.error(de ? "Fehler beim Laden der Bestellungen" : "Error loading orders");
     } finally {
       setOrdersLoading(false);
+    }
+  };
+
+  const handleDeleteCustomer = async (id: string) => {
+    try {
+      const res = await api.delete(`/api/user/customers/${id}`);
+      if (res.data.success) {
+        toast.success(de ? "Kunde erfolgreich gelöscht" : "Customer deleted successfully");
+        setDeleteConfirm(null);
+        fetchCustomers();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(de ? "Fehler beim Löschen des Kunden" : "Error deleting customer");
     }
   };
 
@@ -217,13 +232,40 @@ const AdminCustomers = () => {
                         {new Date(c.createdAt).toLocaleDateString(de ? "de-DE" : "en-US")}
                       </td>
                       <td className="p-4 text-right">
-                        <button 
-                            onClick={() => handleViewOrders(c)} 
-                            className="p-2 hover:bg-secondary rounded-lg transition-colors group"
-                            title={de ? "Bestellungen ansehen" : "View orders"}
-                        >
-                          <Eye className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
-                        </button>
+                        <div className="flex justify-end gap-2 items-center">
+                          <button 
+                              onClick={() => handleViewOrders(c)} 
+                              className="p-2 hover:bg-secondary rounded-lg transition-colors group"
+                              title={de ? "Bestellungen ansehen" : "View orders"}
+                          >
+                            <Eye className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
+                          </button>
+
+                          {deleteConfirm === c._id ? (
+                            <div className="flex items-center gap-1">
+                              <button 
+                                onClick={() => handleDeleteCustomer(c._id)} 
+                                className="px-2 py-1 bg-destructive text-destructive-foreground rounded text-xs font-semibold"
+                              >
+                                {de ? "Bestätigen" : "Confirm"}
+                              </button>
+                              <button 
+                                onClick={() => setDeleteConfirm(null)} 
+                                className="p-2 hover:bg-secondary rounded-lg"
+                              >
+                                <X className="w-4 h-4 text-muted-foreground" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button 
+                                onClick={() => setDeleteConfirm(c._id)} 
+                                className="p-2 hover:bg-red-500/10 rounded-lg transition-colors group"
+                                title={de ? "Kunden löschen" : "Delete customer"}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500 group-hover:scale-110 transition-transform" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

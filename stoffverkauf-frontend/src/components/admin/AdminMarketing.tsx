@@ -32,12 +32,12 @@ const mockBanners: Banner[] = [
   { id: "3", title: "SALE — bis zu 30% Rabatt", subtitle: "Nur für kurze Zeit", cta: "Zum Angebot", active: false, color: "#924ED1" },
 ];
 
-const mockAbandoned = [
-  { id: "1", customer: "Gast (keine Anmeldung)", email: "gast1@email.de", items: 3, value: 189.70, time: "vor 2 Stunden", recovered: false },
-  { id: "2", customer: "Maria Schmidt", email: "maria.schmidt@email.de", items: 1, value: 79.90, time: "vor 5 Stunden", recovered: true },
-  { id: "3", customer: "Gast (keine Anmeldung)", email: "gast2@email.de", items: 2, value: 139.80, time: "vor 1 Tag", recovered: false },
-  { id: "4", customer: "Thomas Keller", email: "t.keller@email.de", items: 4, value: 319.60, time: "vor 2 Tagen", recovered: false },
-];
+// const mockAbandoned = [
+//   { id: "1", customer: "Gast (keine Anmeldung)", email: "gast1@email.de", items: 3, value: 189.70, time: "vor 2 Stunden", recovered: false },
+//   { id: "2", customer: "Maria Schmidt", email: "maria.schmidt@email.de", items: 1, value: 79.90, time: "vor 5 Stunden", recovered: true },
+//   { id: "3", customer: "Gast (keine Anmeldung)", email: "gast2@email.de", items: 2, value: 139.80, time: "vor 1 Tag", recovered: false },
+//   { id: "4", customer: "Thomas Keller", email: "t.keller@email.de", items: 4, value: 319.60, time: "vor 2 Tagen", recovered: false },
+// ];
 
 const AdminMarketing = () => {
   const { lang } = useI18n();
@@ -68,7 +68,7 @@ const AdminMarketing = () => {
     { id: "coupons" as const, label: de ? "Gutscheine" : "Coupons", icon: Tag },
     { id: "banners" as const, label: "Banner", icon: ImageIcon },
     { id: "newsletter" as const, label: "Newsletter", icon: Mail },
-    { id: "abandoned" as const, label: de ? "Abgebrochene Warenkörbe" : "Abandoned Carts", icon: ShoppingCart },
+    // { id: "abandoned" as const, label: de ? "Abgebrochene Warenkörbe" : "Abandoned Carts", icon: ShoppingCart },
   ];
 
   const getVisiblePages = () => {
@@ -674,7 +674,7 @@ const AdminMarketing = () => {
       )}
 
       {/* ABANDONED CARTS */}
-      {activeTab === "abandoned" && (
+      {/* {activeTab === "abandoned" && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -735,7 +735,7 @@ const AdminMarketing = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

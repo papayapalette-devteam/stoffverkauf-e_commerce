@@ -1,5 +1,5 @@
 const express = require("express");
-const { signup, login, updateUser, getAllCustomers, getAllAdmins, createAdmin, deleteAdmin } = require("../Controllers/RegisterUsers/register_user");
+const { signup, login, updateUser, getAllCustomers, getAllAdmins, createAdmin, deleteAdmin, deleteCustomer } = require("../Controllers/RegisterUsers/register_user");
 
 const router = express.Router();
 
@@ -18,5 +18,7 @@ router.get("/get-all-customers", authMiddleware, adminMiddleware, getAllCustomer
 router.get("/admins", authMiddleware, adminMiddleware, getAllAdmins);
 router.post("/admins", authMiddleware, adminMiddleware, createAdmin);
 router.delete("/admins/:id", authMiddleware, adminMiddleware, deleteAdmin);
+
+router.delete("/customers/:id", authMiddleware, adminMiddleware, deleteCustomer);
 
 module.exports = router;

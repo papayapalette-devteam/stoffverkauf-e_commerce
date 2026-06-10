@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
-import { BarChart3, TrendingUp, Eye, ShoppingBag, Users, DollarSign, ArrowUpRight, ArrowDownRight, Monitor, Smartphone, Download, AlertTriangle, Package } from "lucide-react";
+import { BarChart3, TrendingUp, Eye, ShoppingBag, Users, DollarSign, ArrowUpRight, ArrowDownRight, Monitor, Smartphone, Download, AlertTriangle, Package, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import api from "../../../api";
@@ -13,6 +13,10 @@ const AdminAnalytics = () => {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryData, setInventoryData] = useState<any>(null);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -39,6 +43,26 @@ const AdminAnalytics = () => {
     }
   }, [period, activeReport, de]);
 
+  useEffect(() => {
+    if (activeReport !== "inventory") return;
+    const fetchInventory = async () => {
+      setInventoryLoading(true);
+      try {
+        const res = await api.get("/api/order/admin/inventory", {
+          params: { page: inventoryPage, limit: 10 }
+        });
+        if (res.data.success) {
+          setInventoryData(res.data);
+        }
+      } catch (err) {
+        console.error("Error fetching inventory:", err);
+      } finally {
+        setInventoryLoading(false);
+      }
+    };
+    fetchInventory();
+  }, [activeReport, inventoryPage]);
+
   const stats = [
     {
       label: de ? "Umsatz" : "Revenue",
@@ -64,14 +88,14 @@ const AdminAnalytics = () => {
       icon: Users,
       loading: loading
     },
-    {
-      label: de ? "Seitenaufrufe" : "Page Views",
-      value: "45.821",
-      change: "N/A",
-      up: true,
-      icon: Eye,
-      loading: false
-    },
+    // {
+    //   label: de ? "Seitenaufrufe" : "Page Views",
+    //   value: "45.821",
+    //   change: "N/A",
+    //   up: true,
+    //   icon: Eye,
+    //   loading: false
+    // },
   ];
 
   const topProducts = data?.topProducts || [];
@@ -84,32 +108,23 @@ const AdminAnalytics = () => {
     "365d": [820, 650, 910, 780, 1020, 890, 960, 840, 1100, 870, 930, 1050],
   };
 
-  const topPages = [
-    { path: "/", views: 12450, name: de ? "Startseite" : "Homepage" },
-    { path: "/product/1", views: 3210, name: "Schurwolle Flanell" },
-    { path: "/product/5", views: 2890, name: "Premium Flanell" },
-    { path: "/about", views: 1560, name: de ? "Über uns" : "About Us" },
-    { path: "/blog", views: 1230, name: "Blog" },
-  ];
+  // const topPages = [
+  //   { path: "/", views: 12450, name: de ? "Startseite" : "Homepage" },
+  //   { path: "/product/1", views: 3210, name: "Schurwolle Flanell" },
+  //   { path: "/product/5", views: 2890, name: "Premium Flanell" },
+  //   { path: "/about", views: 1560, name: de ? "Über uns" : "About Us" },
+  //   { path: "/blog", views: 1230, name: "Blog" },
+  // ];
 
-  const devices = [
-    { type: "Desktop", icon: Monitor, pct: 58 },
-    { type: "Mobile", icon: Smartphone, pct: 35 },
-    { type: de ? "Tablet" : "Tablet", icon: Monitor, pct: 7 },
-  ];
+  // const devices = [
+  //   { type: "Desktop", icon: Monitor, pct: 58 },
+  //   { type: "Mobile", icon: Smartphone, pct: 35 },
+  //   { type: de ? "Tablet" : "Tablet", icon: Monitor, pct: 7 },
+  // ];
 
-  const lowStockProducts = [
-    { name: "Designer Bouclé Meterware", stock: 2, unit: "m", threshold: 5 },
-    { name: "Pailletten Walkstoff", stock: 1, unit: "m", threshold: 5 },
-    { name: "Elastik Samt Dunkelblau", stock: 3, unit: "m", threshold: 10 },
-    { name: "Spitze Designer Premium", stock: 0, unit: "m", threshold: 5 },
-  ];
-
-  const taxReport = [
-    { period: "Jan 2026", grossRevenue: 4210.50, netRevenue: 3538.24, vat: 672.26, vatRate: 19 },
-    { period: "Feb 2026", grossRevenue: 3890.20, netRevenue: 3269.08, vat: 621.12, vatRate: 19 },
-    { period: "Dez 2025", grossRevenue: 5120.80, netRevenue: 4303.19, vat: 817.61, vatRate: 19 },
-  ];
+  const lowStockProducts = activeReport === "inventory" ? (inventoryData?.lowStockProducts || []) : (data?.lowStockProducts || []);
+  const inventoryTotalPages = inventoryData?.totalPages || 1;
+  const taxReport = data?.taxReport || [];
 
   const currentData = revenueData[period] || revenueData["7d"];
 
@@ -161,7 +176,7 @@ const AdminAnalytics = () => {
       {activeReport === "overview" && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {stats.map((stat, i) => (
               <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-card rounded-xl border border-border p-5 shadow-card">
                 <div className="flex items-center justify-between mb-3">
@@ -322,7 +337,7 @@ const AdminAnalytics = () => {
               </div>
 
               {/* Devices */}
-              <div className="bg-card rounded-xl border border-border p-5 shadow-card">
+              {/* <div className="bg-card rounded-xl border border-border p-5 shadow-card">
                 <h3 className="font-display text-base font-bold text-foreground mb-4">{de ? "Geräte & Seitenaufrufe" : "Devices & Page Views"}</h3>
                 <div className="space-y-3">
                   {devices.map((d) => (
@@ -336,12 +351,12 @@ const AdminAnalytics = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 
           {/* Top Pages */}
-          <div className="bg-card rounded-xl border border-border shadow-card">
+          {/* <div className="bg-card rounded-xl border border-border shadow-card">
             <div className="p-5 border-b border-border">
               <h3 className="font-display text-base font-bold text-foreground">{de ? "Meistbesuchte Seiten" : "Top Pages"}</h3>
             </div>
@@ -365,7 +380,7 @@ const AdminAnalytics = () => {
                 </tbody>
               </table>
             </div>
-          </div>
+          </div> */}
         </>
       )}
 
@@ -376,7 +391,7 @@ const AdminAnalytics = () => {
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-amber-700">{de ? "Lagerwarnung" : "Low Stock Warning"}</p>
-              <p className="text-xs text-amber-600">{de ? `${lowStockProducts.length} Produkte haben niedrigen oder keinen Lagerbestand.` : `${lowStockProducts.length} products have low or no stock.`}</p>
+              <p className="text-xs text-amber-600">{de ? `${inventoryData?.totalProducts || 0} Produkte haben niedrigen oder keinen Lagerbestand.` : `${inventoryData?.totalProducts || 0} products have low or no stock.`}</p>
             </div>
           </div>
 
@@ -398,29 +413,68 @@ const AdminAnalytics = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {lowStockProducts.map((p, i) => (
-                    <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <Package className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium text-foreground">{p.name}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`font-bold ${p.stock === 0 ? "text-destructive" : "text-amber-600"}`}>
-                          {p.stock} {p.unit}
-                        </span>
-                      </td>
-                      <td className="p-4 text-muted-foreground">{p.threshold} {p.unit}</td>
-                      <td className="p-4 text-center">
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.stock === 0 ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-600"}`}>
-                          {p.stock === 0 ? (de ? "Ausverkauft" : "Out of Stock") : (de ? "Niedriger Bestand" : "Low Stock")}
-                        </span>
+                  {inventoryLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={`skeleton-${i}`} className="border-b border-border animate-pulse">
+                        <td className="p-4"><div className="h-4 w-32 bg-secondary rounded" /></td>
+                        <td className="p-4"><div className="h-4 w-16 bg-secondary rounded" /></td>
+                        <td className="p-4"><div className="h-4 w-12 bg-secondary rounded" /></td>
+                        <td className="p-4"><div className="h-6 w-24 mx-auto bg-secondary rounded-full" /></td>
+                      </tr>
+                    ))
+                  ) : lowStockProducts.length === 0 ? (
+                    <tr key="empty">
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                        {de ? "Keine Produkte mit niedrigem Lagerbestand" : "No low stock products"}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    lowStockProducts.map((p: any, i: number) => (
+                      <tr key={p.name || i} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium text-foreground">{p.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`font-bold ${p.stock === 0 ? "text-destructive" : "text-amber-600"}`}>
+                            {p.stock} {p.unit}
+                          </span>
+                        </td>
+                        <td className="p-4 text-muted-foreground">{p.threshold} {p.unit}</td>
+                        <td className="p-4 text-center">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.stock === 0 ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-600"}`}>
+                            {p.stock === 0 ? (de ? "Ausverkauft" : "Out of Stock") : (de ? "Niedriger Bestand" : "Low Stock")}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
+            </div>
+            
+            <div className="p-4 border-t border-border flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {de ? `Zeige Seite ${inventoryPage} von ${inventoryTotalPages}` : `Showing page ${inventoryPage} of ${inventoryTotalPages}`}
+              </span>
+              <div className="flex gap-2">
+                <button 
+                  disabled={inventoryPage === 1}
+                  onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
+                  className="p-1.5 bg-secondary text-muted-foreground rounded-lg disabled:opacity-50 hover:text-foreground"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  disabled={inventoryPage === inventoryTotalPages || inventoryTotalPages === 0}
+                  onClick={() => setInventoryPage(p => Math.min(inventoryTotalPages, p + 1))}
+                  className="p-1.5 bg-secondary text-muted-foreground rounded-lg disabled:opacity-50 hover:text-foreground"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

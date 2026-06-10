@@ -13,11 +13,13 @@ const { authMiddleware, adminMiddleware } = require('../middlewares/auth');
 // ==========================================
 router.get('/admin/returns', authMiddleware, adminMiddleware, returnController.getAllReturns);
 router.get('/admin/analytics', authMiddleware, adminMiddleware, orderController.getAnalyticsOverview);
+router.get('/admin/inventory', authMiddleware, adminMiddleware, orderController.getInventory);
 router.get('/admin/all', authMiddleware, adminMiddleware, orderController.getAllOrders);
 router.post('/admin/refund', authMiddleware, adminMiddleware, returnController.processRefund);
 router.post('/admin/resend-confirmation', authMiddleware, adminMiddleware, orderController.resendConfirmationEmail);
 router.patch('/admin/:id/view', authMiddleware, adminMiddleware, orderController.markAsViewed);
 router.patch('/admin/:id', authMiddleware, adminMiddleware, orderController.updateOrderStatus);
+router.delete('/admin/:id', authMiddleware, adminMiddleware, orderController.deleteOrder);
 
 // ==========================================
 // DOCUMENT ROUTES (Downloads)

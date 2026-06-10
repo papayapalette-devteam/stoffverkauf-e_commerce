@@ -245,4 +245,18 @@ const deleteAdmin = async (req, res) => {
   }
 };
 
-module.exports = { signup, login, updateUser, getAllCustomers, getAllAdmins, createAdmin, deleteAdmin };
+const deleteCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await User.findByIdAndDelete(id);
+    return res.status(200).json({
+      success: true,
+      message: "Customer removed successfully"
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: "server_error" });
+  }
+};
+
+module.exports = { signup, login, updateUser, getAllCustomers, getAllAdmins, createAdmin, deleteAdmin, deleteCustomer };

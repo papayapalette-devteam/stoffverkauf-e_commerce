@@ -300,6 +300,20 @@ exports.markAsViewed = async (req, res) => {
   }
 };
 
+// Admin: Delete Order
+exports.deleteOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findByIdAndDelete(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+    res.status(200).json({ success: true, message: "Order deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Admin: Resend Confirmation Email
 exports.resendConfirmationEmail = async (req, res) => {
   try {
@@ -980,6 +994,47 @@ exports.getAnalyticsOverview = async (req, res) => {
       };
     }).sort((a, b) => b.revenue - a.revenue);
 
+    // 8. LOW STOCK INVENTORY
+    const lowStockThreshold = 5;
+    const lowStockDocs = await Product.find({ stockQty: { $lte: lowStockThreshold } })
+      .select('name stockQty category')
+      .limit(20);
+    
+    const lowStockProducts = lowStockDocs.map(p => ({
+      name: p.name,
+      stock: p.stockQty,
+      unit: (p.category && (p.category.toLowerCase().includes("stoff") || p.category.toLowerCase().includes("fabric"))) ? "m" : "Stk",
+      threshold: lowStockThreshold
+    }));
+
+    // 9. TAX REPORT (Last 6 Months)
+    const taxAgg = await Order.aggregate([
+      { $match: { isPaid: true } },
+      {
+        $group: {
+          _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+          grossRevenue: { $sum: "$total" }
+        }
+      },
+      { $sort: { "_id.year": -1, "_id.month": -1 } },
+      { $limit: 6 }
+    ]);
+
+    const monthNames = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+    
+    const taxReport = taxAgg.map(t => {
+      const gross = t.grossRevenue;
+      const net = gross / 1.19;
+      const vat = gross - net;
+      return {
+        period: `${monthNames[t._id.month - 1]} ${t._id.year}`,
+        grossRevenue: Math.round(gross * 100) / 100,
+        netRevenue: Math.round(net * 100) / 100,
+        vat: Math.round(vat * 100) / 100,
+        vatRate: 19
+      };
+    });
+
     res.status(200).json({
       success: true,
       stats: {
@@ -1001,7 +1056,9 @@ exports.getAnalyticsOverview = async (req, res) => {
       },
       revenueTrend: formattedTrend,
       topProducts: formattedProducts,
-      categoryPerformance
+      categoryPerformance,
+      lowStockProducts,
+      taxReport
     });
 
   } catch (error) {
@@ -1010,6 +1067,43 @@ exports.getAnalyticsOverview = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+// Admin: Get Inventory Pagination
+exports.getInventory = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const Product = require("../../Modals/AddProducts/add_products");
+    const lowStockThreshold = 5;
+
+    const query = { stockQty: { $lte: lowStockThreshold } };
+
+    const totalProducts = await Product.countDocuments(query);
+    const lowStockDocs = await Product.find(query)
+      .select('name stockQty category')
+      .skip(skip)
+      .limit(limit);
+
+    const lowStockProducts = lowStockDocs.map(p => ({
+      name: p.name,
+      stock: p.stockQty,
+      unit: (p.category && (p.category.toLowerCase().includes("stoff") || p.category.toLowerCase().includes("fabric"))) ? "m" : "Stk",
+      threshold: lowStockThreshold
+    }));
+
+    res.status(200).json({
+      success: true,
+      lowStockProducts,
+      totalProducts,
+      totalPages: Math.ceil(totalProducts / limit),
+      page,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

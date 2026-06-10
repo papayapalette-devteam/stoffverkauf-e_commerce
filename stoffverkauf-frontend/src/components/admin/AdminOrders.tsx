@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Search, Eye, Truck, Package, CheckCircle, XCircle, Download, RefreshCcw, Mail, FileText, Clock, X, ChevronLeft, ChevronRight, Loader2, Printer, ExternalLink } from "lucide-react";
+import { Search, Eye, Truck, Package, CheckCircle, XCircle, Download, RefreshCcw, Mail, FileText, Clock, X, ChevronLeft, ChevronRight, Loader2, Printer, ExternalLink, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../../api";
 
@@ -41,6 +41,7 @@ const AdminOrders = () => {
   const [sendingNotificationIds, setSendingNotificationIds] = useState<string[]>([]);
   const [processingRefund, setProcessingRefund] = useState(false);
   const [processingShipping, setProcessingShipping] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
 
   const fetchOrders = async () => {
@@ -94,6 +95,19 @@ const AdminOrders = () => {
     }
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      const res = await api.delete(`/api/order/admin/${orderId}`);
+      if (res.data.success) {
+        toast.success(de ? "Bestellung erfolgreich gelöscht" : "Order deleted successfully");
+        setDeleteConfirm(null);
+        fetchOrders();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || (de ? "Fehler beim Löschen der Bestellung" : "Failed to delete order"));
+    }
+  };
+
   const handleDownloadInvoice = (orderId: string) => {
     window.open(`${api.defaults.baseURL}/api/order/document/${orderId}/invoice`, '_blank');
   };
@@ -129,11 +143,11 @@ const AdminOrders = () => {
   const selected = selectedOrder ? orders.find((o) => o._id === selectedOrder) : null;
 
   const orderTimeline = [
-    { status: de ? "Bestellt" : "Ordered", icon: Package, done: true, time: "10:23 Uhr" },
-    { status: de ? "Bezahlt" : "Payment Confirmed", icon: CheckCircle, done: true, time: "10:24 Uhr" },
-    { status: de ? "In Bearbeitung" : "Processing", icon: RefreshCcw, done: true, time: "11:05 Uhr" },
-    { status: de ? "Versandt" : "Shipped", icon: Truck, done: selected?.status === "shipped" || selected?.status === "delivered", time: selected?.trackingNumber ? "14:30 Uhr" : "—" },
-    { status: de ? "Zugestellt" : "Delivered", icon: CheckCircle, done: selected?.status === "delivered", time: selected?.status === "delivered" ? "Nächster Tag" : "—" },
+    { status: de ? "Bestellt" : "Ordered", icon: Package, done: true, time: selected?.createdAt ? new Date(selected.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "—" },
+    { status: de ? "Bezahlt" : "Payment Confirmed", icon: CheckCircle, done: selected?.isPaid, time: selected?.paidAt ? new Date(selected.paidAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "—" },
+    { status: de ? "In Bearbeitung" : "Processing", icon: RefreshCcw, done: selected?.status === "processing" || selected?.status === "shipped" || selected?.status === "delivered", time: "—" },
+    { status: de ? "Versandt" : "Shipped", icon: Truck, done: selected?.status === "shipped" || selected?.status === "delivered", time: selected?.shippedAt ? new Date(selected.shippedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "—" },
+    { status: de ? "Zugestellt" : "Delivered", icon: CheckCircle, done: selected?.status === "delivered", time: selected?.deliveredAt ? new Date(selected.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "—" },
   ];
 
   const handleShipped = (order: any) => {
@@ -345,9 +359,16 @@ const AdminOrders = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             <div><p className="text-muted-foreground">{de ? "Datum" : "Date"}</p><p className="font-semibold text-foreground">{new Date(selected.createdAt).toLocaleDateString()}</p></div>
             <div><p className="text-muted-foreground">Status</p><p className="font-semibold text-foreground capitalize">{selected.status}</p></div>
+            <div>
+              <p className="text-muted-foreground">{de ? "Zahlung" : "Payment"}</p>
+              <p className={`font-semibold ${selected.isPaid ? "text-green-600" : "text-amber-500"}`}>
+                {selected.isPaid ? (de ? "Bezahlt" : "Paid") : (de ? "Ausstehend" : "Pending")}
+                {selected.paymentMethod && <span className="text-xs text-muted-foreground ml-1">({selected.paymentMethod})</span>}
+              </p>
+            </div>
             <div><p className="text-muted-foreground">{de ? "Artikel" : "Items"}</p><p className="font-semibold text-foreground">{selected.items.length}</p></div>
             <div><p className="text-muted-foreground">{de ? "Gesamt" : "Total"}</p><p className="font-semibold text-foreground">{selected.total.toFixed(2)} €</p></div>
             {selected.discount > 0 && (
@@ -526,6 +547,18 @@ const AdminOrders = () => {
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           <span className="text-xs font-semibold">{de ? "Aktualisiert..." : "Updating..."}</span>
                         </div>
+                      ) : !order.isPaid && order.status !== "cancelled" ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-bold text-amber-500 px-2 py-1 bg-amber-500/10 rounded w-fit">
+                            {de ? "Zahlung ausstehend" : "Payment Pending"}
+                          </span>
+                          <button 
+                            onClick={() => handleStatusChange(order._id, "cancelled")}
+                            className="text-[10px] text-muted-foreground hover:text-destructive w-fit ml-1"
+                          >
+                            {de ? "Stornieren" : "Cancel order"}
+                          </button>
+                        </div>
                       ) : (
                         <select
                           value={order.status}
@@ -595,6 +628,31 @@ const AdminOrders = () => {
                             className="p-2 hover:bg-secondary rounded-lg transition-colors disabled:opacity-50" title={de ? "Versandetikett" : "Shipping Label"}
                           >
                             <Printer className="w-4 h-4 text-accent" />
+                          </button>
+                        )}
+                        {deleteConfirm === order._id ? (
+                          <div className="flex items-center gap-1 bg-destructive/10 rounded-lg p-1">
+                            <button 
+                              onClick={() => handleDeleteOrder(order._id)} 
+                              className="px-2 py-1 bg-destructive text-destructive-foreground rounded text-xs font-semibold hover:bg-destructive/90"
+                            >
+                              {de ? "Sicher?" : "Sure?"}
+                            </button>
+                            <button 
+                              onClick={() => setDeleteConfirm(null)} 
+                              className="p-1 text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => setDeleteConfirm(order._id)} 
+                            disabled={updatingOrderIds.includes(order._id)}
+                            className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors disabled:opacity-50" 
+                            title={de ? "Löschen" : "Delete"}
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
