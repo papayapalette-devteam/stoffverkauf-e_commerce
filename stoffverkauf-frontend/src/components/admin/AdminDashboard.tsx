@@ -81,13 +81,13 @@ const AdminDashboard = () => {
       up: analytics?.stats?.customers?.up ?? true, 
       icon: Users 
     },
-    { 
-      label: de ? "Seitenaufrufe" : "Page Views", 
-      value: pageViewsVal, 
-      change: pageViewsChange, 
-      up: pageViewsUp, 
-      icon: Eye 
-    },
+    // { 
+    //   label: de ? "Seitenaufrufe" : "Page Views", 
+    //   value: pageViewsVal, 
+    //   change: pageViewsChange, 
+    //   up: pageViewsUp, 
+    //   icon: Eye 
+    // },
   ];
 
   // Dynamic Chart Calculations
@@ -113,7 +113,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Skeletons or Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {stats.map((stat, i) => (
           <motion.div 
             key={stat.label} 
