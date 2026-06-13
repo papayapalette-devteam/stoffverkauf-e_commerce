@@ -81,6 +81,8 @@ exports.getCoupons = async (req, res) => {
     const total = await Coupon.countDocuments();
     const totalActive = await Coupon.countDocuments({ active: true });
     const data = await Coupon.find()
+      .populate('applicableProducts', 'name')
+      .populate('applicableCategories', 'name')
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -137,13 +139,13 @@ exports.toggleEnable = async (req, res) => {
 // VALIDATE COUPON
 exports.validateCoupon = async (req, res) => {
   try {
-    const { code, total } = req.body;
+    const { code, total, items = [] } = req.body;
     if (!code) return res.status(400).json({ success: false, message: "Code is required" });
 
     const coupon = await Coupon.findOne({ 
       code: code.toUpperCase(), 
       active: true 
-    });
+    }).populate('applicableCategories', 'name');
 
     if (!coupon) {
       return res.status(200).json({ 
@@ -165,18 +167,52 @@ exports.validateCoupon = async (req, res) => {
       return res.status(200).json({ success: false, message: "Coupon usage limit reached" });
     }
 
+    // Check applicable products / categories
+    let applicableTotal = total;
+    const hasProductRestrictions = coupon.applicableProducts && coupon.applicableProducts.length > 0;
+    const hasCategoryRestrictions = coupon.applicableCategories && coupon.applicableCategories.length > 0;
+
+    if (hasProductRestrictions || hasCategoryRestrictions) {
+      applicableTotal = 0;
+      let hasApplicableItem = false;
+
+      for (const item of items) {
+        let isApplicable = false;
+
+        if (hasProductRestrictions && coupon.applicableProducts.some(p => p.toString() === String(item.product))) {
+          isApplicable = true;
+        }
+
+        if (!isApplicable && hasCategoryRestrictions && coupon.applicableCategories.some(c => c.name === item.category)) {
+          isApplicable = true;
+        }
+
+        if (isApplicable) {
+          hasApplicableItem = true;
+          applicableTotal += (item.price * item.quantity);
+        }
+      }
+
+      if (!hasApplicableItem) {
+        return res.status(200).json({
+          success: false,
+          message: "This coupon is not applicable to any items in your cart"
+        });
+      }
+    }
+
     // Check minimum order
-    if (total < coupon.minOrder) {
+    if (applicableTotal < coupon.minOrder) {
       return res.status(200).json({ 
         success: false, 
-        message: `Min. order for this coupon is €${coupon.minOrder.toFixed(2)}` 
+        message: `Min. order of applicable items for this coupon is €${coupon.minOrder.toFixed(2)}` 
       });
     }
 
     // Calculate discount
     let discount = 0;
     if (coupon.type === "percent") {
-      discount = (total * coupon.value) / 100;
+      discount = (applicableTotal * coupon.value) / 100;
     } else {
       discount = coupon.value;
     }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
-import { Plus, Trash2, Tag, Image as ImageIcon, Mail, ShoppingCart, Bell, Percent, Calendar, Users, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Tag, Image as ImageIcon, Mail, ShoppingCart, Bell, Percent, Calendar, Users, Pencil, X, Search, Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../../api";
 import axios from "axios";
@@ -15,6 +15,8 @@ interface Coupon {
   maxUses: number;
   expires: string;
   active: boolean;
+  applicableProducts?: string[];
+  applicableCategories?: string[];
 }
 
 interface Banner {
@@ -39,6 +41,108 @@ const mockBanners: Banner[] = [
 //   { id: "4", customer: "Thomas Keller", email: "t.keller@email.de", items: 4, value: 319.60, time: "vor 2 Tagen", recovered: false },
 // ];
 
+const SearchableMultiSelect = ({
+  options,
+  selected,
+  onChange,
+  onSearch,
+  placeholder,
+  searchPlaceholder,
+  async = false
+}: any) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [localOptions, setLocalOptions] = useState(options);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (async && open) {
+      const fetchOpts = async () => {
+        setLoading(true);
+        await onSearch(query, setLocalOptions);
+        setLoading(false);
+      };
+      const t = setTimeout(fetchOpts, 300);
+      return () => clearTimeout(t);
+    } else if (!async) {
+      setLocalOptions(options.filter((o: any) => o.name.toLowerCase().includes(query.toLowerCase())));
+    }
+  }, [query, async, open, options]);
+
+  const toggleOption = (opt: any) => {
+    if (selected.some((s: any) => s._id === opt._id)) {
+      onChange(selected.filter((s: any) => s._id !== opt._id));
+    } else {
+      onChange([...selected, opt]);
+    }
+  };
+
+  const removeOption = (id: string, e: any) => {
+    e.stopPropagation();
+    onChange(selected.filter((s: any) => s._id !== id));
+  };
+
+  return (
+    <div className="relative w-full">
+      <div 
+        className="min-h-[42px] w-full px-3 py-2 bg-secondary/50 rounded-xl border border-border cursor-pointer flex flex-wrap gap-2 items-center"
+        onClick={() => setOpen(!open)}
+      >
+        {selected.length === 0 && <span className="text-muted-foreground text-sm">{placeholder}</span>}
+        {selected.map((s: any) => (
+          <span key={s._id} className="bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1">
+            {s.name}
+            <button type="button" onClick={(e) => removeOption(s._id, e)} className="hover:bg-primary/20 rounded-full p-0.5 transition-colors">
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+        <div className="ml-auto text-muted-foreground"><ChevronDown className="w-4 h-4" /></div>
+      </div>
+
+      {open && (
+        <div className="absolute z-50 w-full mt-2 bg-card rounded-xl border border-border shadow-lg overflow-hidden flex flex-col max-h-64">
+          <div className="p-3 border-b border-border flex items-center gap-2 sticky top-0 bg-card z-10">
+            <Search className="w-4 h-4 text-muted-foreground" />
+            <input 
+              autoFocus
+              className="bg-transparent border-none outline-none text-sm w-full font-medium"
+              placeholder={searchPlaceholder}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div className="overflow-y-auto p-2 space-y-1">
+            {loading ? (
+              <p className="p-3 text-sm text-muted-foreground text-center">Laden...</p>
+            ) : localOptions.length === 0 ? (
+              <p className="p-3 text-sm text-muted-foreground text-center">Keine Ergebnisse</p>
+            ) : (
+              localOptions.map((opt: any) => {
+                const isSelected = selected.some((s: any) => s._id === opt._id);
+                return (
+                  <div 
+                    key={opt._id} 
+                    onClick={() => toggleOption(opt)}
+                    className="flex items-center gap-3 p-2.5 hover:bg-secondary/80 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30 bg-background'}`}>
+                      {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{opt.name}</span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+      
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+    </div>
+  );
+};
+
 const AdminMarketing = () => {
   const { lang } = useI18n();
   const de = lang === "de";
@@ -55,7 +159,21 @@ const AdminMarketing = () => {
   const [banners, setBanners] = useState(mockBanners);
   const [showCouponForm, setShowCouponForm] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
-  const [newCoupon, setNewCoupon] = useState<{ _id?: string; code: string; type: "percent" | "fixed"; value: number; minOrder: number; maxUses: number; expires: string }>({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
+  interface NewCoupon {
+    _id?: string;
+    code: string;
+    type: "percent" | "fixed";
+    value: number;
+    minOrder: number;
+    maxUses: number;
+    expires: string;
+    applicableProducts: any[];
+    applicableCategories: any[];
+  }
+  const defaultCoupon: NewCoupon = { code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "", applicableProducts: [], applicableCategories: [] };
+  const [newCoupon, setNewCoupon] = useState<NewCoupon>(defaultCoupon);
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
+  const [productsList, setProductsList] = useState<any[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [savingCoupon, setSavingCoupon] = useState(false);
   const [togglingCouponIds, setTogglingCouponIds] = useState<string[]>([]);
@@ -123,19 +241,33 @@ const AdminMarketing = () => {
   useEffect(() => {
     if (activeTab === "coupons") {
       fetchCoupons();
+      // Fetch categories for selection (products are fetched asynchronously on search)
+      api.get("/api/category/get-categories").then(res => setCategoriesList(res.data.categories || [])).catch(() => {});
     }
   }, [activeTab, page, limit]);
+
+  const searchProducts = async (query: string, setLocalOptions: any) => {
+    try {
+      const res = await api.get(`/api/products/get-product?search=${query}&limit=20`);
+      setLocalOptions(res.data.products || []);
+    } catch (err) {}
+  };
 
   const handleCreateCoupon = async () => {
     if (!newCoupon.code) return;
     try {
       setSavingCoupon(true);
-      const resp = await api.post("/api/coupon/save-coupon", newCoupon);
+      const payload = {
+        ...newCoupon,
+        applicableProducts: newCoupon.applicableProducts.map(p => p._id),
+        applicableCategories: newCoupon.applicableCategories.map(c => c._id)
+      };
+      const resp = await api.post("/api/coupon/save-coupon", payload);
       if (resp.data.success) {
         toast.success(resp.data.message);
         setShowCouponForm(false);
         setEditingCoupon(null);
-        setNewCoupon({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
+        setNewCoupon(defaultCoupon);
         fetchCoupons();
       }
     } catch (err: any) {
@@ -155,6 +287,8 @@ const AdminMarketing = () => {
       minOrder: coupon.minOrder,
       maxUses: coupon.maxUses,
       expires: coupon.expires || "",
+      applicableProducts: coupon.applicableProducts || [],
+      applicableCategories: coupon.applicableCategories || [],
     });
     setShowCouponForm(true);
   };
@@ -291,7 +425,7 @@ const AdminMarketing = () => {
                 setShowCouponForm(!showCouponForm);
                 if (!showCouponForm) {
                   setEditingCoupon(null);
-                  setNewCoupon({ code: "", type: "percent", value: 10, minOrder: 0, maxUses: 100, expires: "" });
+                  setNewCoupon(defaultCoupon);
                 }
               }}
               className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
@@ -333,6 +467,28 @@ const AdminMarketing = () => {
                   <label className="text-sm font-medium text-foreground block mb-1">{de ? "Ablaufdatum" : "Expires"}</label>
                   <input type="date" value={newCoupon.expires} onChange={e => setNewCoupon({ ...newCoupon, expires: e.target.value })} className={inputClass} />
                 </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1">{de ? "Für Kategorien (optional)" : "Applicable Categories (optional)"}</label>
+                  <SearchableMultiSelect 
+                    options={categoriesList} 
+                    selected={newCoupon.applicableCategories} 
+                    onChange={(selected: any) => setNewCoupon({...newCoupon, applicableCategories: selected})}
+                    placeholder={de ? "Kategorien wählen..." : "Select categories..."}
+                    searchPlaceholder={de ? "Suchen..." : "Search..."}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1">{de ? "Für Produkte (optional)" : "Applicable Products (optional)"}</label>
+                  <SearchableMultiSelect 
+                    options={[]} 
+                    selected={newCoupon.applicableProducts} 
+                    onChange={(selected: any) => setNewCoupon({...newCoupon, applicableProducts: selected})}
+                    onSearch={searchProducts}
+                    placeholder={de ? "Produkte wählen..." : "Select products..."}
+                    searchPlaceholder={de ? "Suchen..." : "Search..."}
+                    async={true}
+                  />
+                </div>
               </fieldset>
               <div className="flex gap-3 mt-4">
                 <button
@@ -371,6 +527,7 @@ const AdminMarketing = () => {
                     <th className="text-left p-4 text-muted-foreground font-medium">{de ? "Code" : "Code"}</th>
                     <th className="text-left p-4 text-muted-foreground font-medium hidden md:table-cell">{de ? "Rabatt" : "Discount"}</th>
                     <th className="text-left p-4 text-muted-foreground font-medium hidden lg:table-cell">{de ? "Mindestbestellwert" : "Min. Order"}</th>
+                    <th className="text-left p-4 text-muted-foreground font-medium hidden xl:table-cell">{de ? "Gültig für" : "Applicable To"}</th>
                     <th className="text-left p-4 text-muted-foreground font-medium hidden md:table-cell">{de ? "Verwendungen" : "Uses"}</th>
                     <th className="text-left p-4 text-muted-foreground font-medium hidden lg:table-cell">{de ? "Ablauf" : "Expires"}</th>
                     <th className="text-center p-4 text-muted-foreground font-medium">Status</th>
@@ -398,6 +555,21 @@ const AdminMarketing = () => {
                         {c.type === "percent" ? `${c.value}%` : `${c.value.toFixed(2)} €`}
                       </td>
                       <td className="p-4 text-muted-foreground hidden lg:table-cell">{c.minOrder > 0 ? `${c.minOrder} €` : "—"}</td>
+                      <td className="p-4 text-muted-foreground hidden xl:table-cell">
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {c.applicableCategories?.map((cat: any) => (
+                            <span key={cat._id} className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                              <span className="opacity-60">{de ? "Kat:" : "Cat:"}</span>{cat.name}
+                            </span>
+                          ))}
+                          {c.applicableProducts?.map((prod: any) => (
+                            <span key={prod._id} className="bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                              <span className="opacity-60">{de ? "Prod:" : "Prod:"}</span>{prod.name}
+                            </span>
+                          ))}
+                          {(!c.applicableCategories?.length && !c.applicableProducts?.length) && (de ? "Alle (All)" : "All")}
+                        </div>
+                      </td>
                       <td className="p-4 hidden md:table-cell">
                         <span className="text-foreground">{c.uses}</span>
                         <span className="text-muted-foreground">/{c.maxUses}</span>

@@ -84,9 +84,16 @@ const Checkout = () => {
     if (!couponCode) return;
     setIsApplyingCoupon(true);
     try {
+      const payloadItems = items.map(i => ({
+        product: i._id,
+        category: i.category,
+        price: i.salePrice || i.price,
+        quantity: i.quantity
+      }));
       const res = await api.post("/api/coupon/validate-coupon", { 
         code: couponCode, 
-        total: subtotal 
+        total: subtotal,
+        items: payloadItems
       });
       if (res.data.success) {
         setDiscount(Number(res.data.discount));
