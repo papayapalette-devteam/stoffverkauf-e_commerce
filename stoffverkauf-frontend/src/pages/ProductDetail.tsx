@@ -91,7 +91,8 @@ const ProductDetailPage = () => {
   const { t, lang } = useI18n();
   const de = lang === "de";
 
-  const [meters, setMeters] = useState(1);
+  const [metersInput, setMetersInput] = useState<string>("1");
+  const meters = parseFloat(metersInput) || 1;
   const [zoom, setZoom] = useState(1);
   const [panPos, setPanPos] = useState({ x: 50, y: 50 });
   const [product, setProduct] = useState<ProductForm | null>(null);
@@ -353,12 +354,13 @@ if (!product || !details) {
   const handleAddToCart = () => {
     if (!product) return;
 
-    for (let i = 0; i < meters; i++) {
-      addItem({
+    addItem(
+      {
         ...product, // include all required fields
         images: product.images.length ? [product.images[0]] : [],
-      });
-    }
+      },
+      meters
+    );
 
     toast.success(`${product.name} — ${(product.price * meters).toFixed(2)} €`);
   };
@@ -532,16 +534,29 @@ if (!product || !details) {
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center border border-border rounded-lg overflow-hidden">
                   <button
-                    onClick={() => setMeters(Math.max(1, meters - 1))}
+                    onClick={() => setMetersInput(Math.max(0.1, Math.round((meters - 1) * 10) / 10).toString())}
                     className="px-4 py-3 text-foreground hover:bg-secondary transition-colors font-bold"
                   >
                     −
                   </button>
-                  <span className="px-4 py-3 font-body font-semibold text-foreground min-w-[4rem] text-center">
-                    {meters} {t("detail.meters")}
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={metersInput}
+                    onChange={(e) => setMetersInput(e.target.value)}
+                    onBlur={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (isNaN(val) || val <= 0) setMetersInput("1");
+                      else setMetersInput(val.toString());
+                    }}
+                    className="w-16 py-3 font-body font-semibold text-foreground text-center bg-transparent focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                  <span className="pr-4 py-3 font-body font-semibold text-foreground text-center">
+                    {t("detail.meters")}
                   </span>
                   <button
-                    onClick={() => setMeters(meters + 1)}
+                    onClick={() => setMetersInput(Math.round((meters + 1) * 10) / 10 + "")}
                     className="px-4 py-3 text-foreground hover:bg-secondary transition-colors font-bold"
                   >
                     +

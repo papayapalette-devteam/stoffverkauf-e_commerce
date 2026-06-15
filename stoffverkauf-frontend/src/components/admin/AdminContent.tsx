@@ -126,7 +126,8 @@ const AdminContent = () => {
               title1: "",
               title2: "",
               subtitle: "",
-              cta: ""
+              cta: "",
+              link: ""
             }))
           ]
         }));
@@ -495,6 +496,21 @@ const handleDeletePost = async (id: string) => {
                                 setHeroForm({...heroForm, slides: newSlides});
                               }} 
                               className={inputClass} 
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-foreground block mb-1">Link URL</label>
+                            <input 
+                              value={slide.link || ""} 
+                              onChange={e => {
+                                const newSlides = [...heroForm.slides];
+                                newSlides[index] = { ...newSlides[index], link: e.target.value };
+                                setHeroForm({...heroForm, slides: newSlides});
+                              }} 
+                              className={inputClass} 
+                              placeholder="https://..."
                             />
                           </div>
                         </div>

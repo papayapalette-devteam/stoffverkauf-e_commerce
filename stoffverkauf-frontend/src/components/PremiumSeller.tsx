@@ -278,14 +278,14 @@ useEffect(() => {
                 </div>
               </div>
 
-              <p className="text-[10px] text-muted-foreground">
+              {/* <p className="text-[10px] text-muted-foreground">
                 {product.width ? `${product.width} · ` : ""}
                 {t("product.perMeter")} ·{" "}
                 {lang === "de" ? "inkl. MwSt." : "incl. VAT"} ·{" "}
                 {lang === "de"
                   ? "zzgl. Versandkosten"
                   : "plus shipping"}
-              </p>
+              </p> */}
             </div>
           </motion.div>
         );

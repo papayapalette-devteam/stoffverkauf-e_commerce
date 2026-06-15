@@ -3,6 +3,58 @@ import { X, Minus, Plus, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCart } from "@/lib/cart-context";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
+import { useState, useEffect } from "react";
+
+const CartItemControl = ({ item, updateQuantity, t }: any) => {
+  const [inputValue, setInputValue] = useState(item.quantity.toString());
+
+  useEffect(() => {
+    setInputValue(item.quantity.toString());
+  }, [item.quantity]);
+
+  return (
+    <div className="flex items-center gap-2 bg-secondary rounded-lg">
+      <button
+        onClick={() => updateQuantity(item._id, Math.max(0.1, Math.round((item.quantity - 1) * 10) / 10))}
+        className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+        aria-label={t("cart.decrease")}
+      >
+        <Minus className="w-3.5 h-3.5" />
+      </button>
+      <input
+        type="number"
+        min="0.1"
+        step="0.1"
+        value={inputValue}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          const val = parseFloat(e.target.value);
+          if (!isNaN(val) && val > 0 && e.target.value !== "0" && !e.target.value.endsWith(".")) {
+            updateQuantity(item._id, val);
+          }
+        }}
+        onBlur={(e) => {
+          const val = parseFloat(e.target.value);
+          if (isNaN(val) || val <= 0) {
+            setInputValue("1");
+            updateQuantity(item._id, 1);
+          } else {
+            setInputValue(val.toString());
+            updateQuantity(item._id, val);
+          }
+        }}
+        className="w-10 text-sm font-semibold text-foreground text-center bg-transparent focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+      <button
+        onClick={() => updateQuantity(item._id, Math.round((item.quantity + 1) * 10) / 10)}
+        className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+        aria-label={t("cart.increase")}
+      >
+        <Plus className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+};
 
 const CartDrawer = () => {
   const { items, isCartOpen, setIsCartOpen, removeItem, updateQuantity, total, itemCount } = useCart();
@@ -74,28 +126,11 @@ const CartDrawer = () => {
                           {item.name}
                         </h3>
                         <p className="text-muted-foreground text-xs mt-0.5">
-                          {t(`cat.${item.category}` as TranslationKey)} · {t("product.perMeter")}
+                          {t(`${item.category}` as TranslationKey)} 
+                          {/* · {t("product.perMeter")} */}
                         </p>
                         <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-2 bg-secondary rounded-lg">
-                            <button
-                              onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                              aria-label={t("cart.decrease")}
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="text-sm font-semibold text-foreground w-6 text-center">
-                              {item.quantity}
-                            </span>
-                            <button
-                              onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                              aria-label={t("cart.increase")}
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <CartItemControl item={item} updateQuantity={updateQuantity} t={t} />
                           <p className="font-body font-bold text-sm text-foreground">
                             {((item.salePrice || item.price) * item.quantity).toFixed(2)} €
                           </p>

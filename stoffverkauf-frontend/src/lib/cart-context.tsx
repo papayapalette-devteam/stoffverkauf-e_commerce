@@ -34,7 +34,7 @@ export interface CartItem extends Product {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: Product) => void;
+  addItem: (product: Product, quantity?: number) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -50,15 +50,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const addItem = useCallback((product: Product) => {
+  const addItem = useCallback((product: Product, quantity: number = 1) => {
     setItems((prev) => {
       const existing = prev.find((item) => item._id === product._id);
       if (existing) {
         return prev.map((item) =>
-          item._id === product._id ? { ...item, quantity: item.quantity + 1 } : item
+          item._id === product._id ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity }];
     });
     setIsCartOpen(true);
   }, []);
@@ -68,20 +68,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const updateQuantity = useCallback((id: string, quantity: number) => {
-
-    if (quantity <= 0) {
+    const roundedQuantity = Math.round(quantity * 10) / 10;
+    if (roundedQuantity <= 0) {
       setItems((prev) => prev.filter((item) => item._id !== id));
     } else {
       setItems((prev) =>
-        prev.map((item) => (item._id === id ? { ...item, quantity } : item))
+        prev.map((item) => (item._id === id ? { ...item, quantity: roundedQuantity } : item))
       );
     }
   }, []);
 
   const clearCart = useCallback(() => setItems([]), []);
 
-  const total = items.reduce((sum, item) => sum + (item.salePrice || item.price) * item.quantity, 0);
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const total = Math.round(items.reduce((sum, item) => sum + (item.salePrice || item.price) * item.quantity, 0) * 100) / 100;
+  const itemCount = Math.round(items.reduce((sum, item) => sum + item.quantity, 0) * 10) / 10;
 
   return (
     <CartContext.Provider

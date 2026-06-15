@@ -48,6 +48,7 @@ const HeroSection = () => {
           title2: heroData.title2,
           subtitle: heroData.subtitle,
           cta: heroData.cta1,
+          link: heroData.link,
           key: `dynamic-${i}` 
         }))
       : staticSlides;
@@ -72,18 +73,29 @@ const HeroSection = () => {
           transition={{ duration: 0.8, ease: "easeInOut" }}
           className="absolute inset-0"
         >
-          <img
-            src={slides[current].image}
-            alt={slides[current]?.title2 || heroData?.title2 || t("hero.title2")}
-            className="w-full h-full object-cover"
-            loading={current === 0 ? "eager" : "lazy"}
-          />
-          <div className="absolute inset-0 bg-foreground/50" />
+          {slides[current].link ? (
+            <a href={slides[current].link} className="w-full h-full block cursor-pointer">
+              <img
+                src={slides[current].image}
+                alt={slides[current]?.title2 || heroData?.title2 || t("hero.title2")}
+                className="w-full h-full object-cover"
+                loading={current === 0 ? "eager" : "lazy"}
+              />
+            </a>
+          ) : (
+            <img
+              src={slides[current].image}
+              alt={slides[current]?.title2 || heroData?.title2 || t("hero.title2")}
+              className="w-full h-full object-cover"
+              loading={current === 0 ? "eager" : "lazy"}
+            />
+          )}
+          <div className="absolute inset-0 bg-foreground/50 pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
       {/* Content */}
-      <div className="relative container mx-auto px-4 lg:px-8 py-24 sm:py-32 lg:py-44">
+      <div className="relative container mx-auto px-4 lg:px-8 py-24 sm:py-32 lg:py-44 pointer-events-none">
         <AnimatePresence mode="wait">
           <motion.div
             key={`content-${slides[current].key}`}
@@ -91,7 +103,7 @@ const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -30 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="max-w-2xl"
+            className="max-w-2xl pointer-events-auto"
           >
           <motion.span
             initial={{ opacity: 0 }}
@@ -110,8 +122,8 @@ const HeroSection = () => {
           </p>
           <div className="flex flex-wrap gap-4">
             <a
-              href="/#shop"
-              className="inline-flex items-center gap-2 bg-primary-foreground text-primary px-8 py-4 rounded-lg font-body font-semibold text-sm hover:opacity-90 transition-opacity"
+              href={slides[current]?.link || "/#shop"}
+              className="inline-flex items-center gap-2 bg-primary-foreground text-primary px-8 py-4 rounded-lg font-body font-semibold text-sm hover:opacity-90 transition-opacity relative z-10"
             >
               {slides[current]?.cta && slides[current].cta.trim() !== "" ? slides[current].cta :""} <ArrowRight className="w-4 h-4" />
             </a>
