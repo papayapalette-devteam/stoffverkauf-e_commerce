@@ -144,38 +144,7 @@ interface Category {
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  const MAX_VISIBLE = 5;
 
-const getVisiblePages = () => {
-  const pages = [];
-
-  let start = Math.max(1, page - Math.floor(MAX_VISIBLE / 2));
-  let end = start + MAX_VISIBLE - 1;
-
-  if (end > totalPages) {
-    end = totalPages;
-    start = Math.max(1, end - MAX_VISIBLE + 1);
-  }
-
-  // Always show first page
-  if (start > 1) {
-    pages.push(1);
-    if (start > 2) pages.push("...");
-  }
-
-  // Middle pages
-  for (let i = start; i <= end; i++) {
-    pages.push(i);
-  }
-
-  // Always show last page
-  if (end < totalPages) {
-    if (end < totalPages - 1) pages.push("...");
-    pages.push(totalPages);
-  }
-
-  return pages;
-};
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1243,43 +1212,55 @@ const handleSyncCloudinary = async () => {
           </table>
         </div>
         {products.length > 0 && totalPages > 1 && (
-          <div className="flex items-center gap-2 mt-4 p-4">
-            {/* Prev */}
-            <button
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              Prev
-            </button>
-
-            {/* Page Numbers */}
-            {getVisiblePages().map((p, idx) =>
-              p === "..." ? (
-                <span key={idx} className="px-2 py-1 text-gray-500">
-                  ...
-                </span>
-              ) : (
-                <button
-                  key={p}
-                  onClick={() => setPage(p as number)}
-                  className={`px-3 py-1 border rounded ${
-                    page === p ? "bg-[#5C00B3] text-white" : ""
-                  }`}
-                >
-                  {p}
-                </button>
-              )
-            )}
-
-            {/* Next */}
-            <button
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={page === totalPages}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              Next
-            </button>
+          <div className="flex items-center justify-between mt-4 p-4 border-t">
+            <div className="flex items-center gap-6">
+              <span className="text-sm text-muted-foreground font-medium" translate="no">
+                {de ? "Seite" : "Page"} <span className="text-foreground mx-1">{page}</span> {de ? "von" : "of"} <span className="text-foreground mx-1">{totalPages}</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground" translate="no">{de ? "Gehe zu:" : "Go to:"}</span>
+                <input 
+                  key={page}
+                  type="number" 
+                  min={1} 
+                  max={totalPages}
+                  defaultValue={page}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      let val = Number(e.currentTarget.value);
+                      if (val < 1) val = 1;
+                      if (val > totalPages) val = totalPages;
+                      setPage(val);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    let val = Number(e.target.value);
+                    if (val < 1) val = 1;
+                    if (val > totalPages) val = totalPages;
+                    setPage(val);
+                  }}
+                  className="w-16 px-2 py-1 text-sm border rounded-md bg-background focus:ring-1 focus:ring-accent focus:border-accent outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                // translate="no"
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page <= 1}
+                className="px-4 py-1.5 text-sm border rounded-md disabled:opacity-50 hover:bg-secondary transition-colors"
+              >
+                {de ? "Zurück" : "Prev"}
+              </button>
+              <button
+                // translate="no"
+                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={page >= totalPages}
+                className="px-4 py-1.5 text-sm border rounded-md disabled:opacity-50 hover:bg-secondary transition-colors"
+              >
+                {de ? "Weiter" : "Next"}
+              </button>
+            </div>
           </div>
         )}
       </div>
