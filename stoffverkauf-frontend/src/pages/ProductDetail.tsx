@@ -490,9 +490,9 @@ if (!product || !details) {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="flex flex-col"
             >
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mb-2">
+              {/* <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mb-2">
                 {t(`cat.${product.category}` as TranslationKey)}
-              </p>
+              </p> */}
               <h1 className="font-display text-3xl lg:text-4xl font-bold text-foreground mb-3">
                 {product.name}
               </h1>
