@@ -65,38 +65,9 @@ const ProductGrid = () => {
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  const MAX_VISIBLE = 5;
 
-const getVisiblePages = () => {
-  const pages = [];
 
-  let start = Math.max(1, page - Math.floor(MAX_VISIBLE / 2));
-  let end = start + MAX_VISIBLE - 1;
 
-  if (end > totalPages) {
-    end = totalPages;
-    start = Math.max(1, end - MAX_VISIBLE + 1);
-  }
-
-  // Always show first page
-  if (start > 1) {
-    pages.push(1);
-    if (start > 2) pages.push("...");
-  }
-
-  // Middle pages
-  for (let i = start; i <= end; i++) {
-    pages.push(i);
-  }
-
-  // Always show last page
-  if (end < totalPages) {
-    if (end < totalPages - 1) pages.push("...");
-    pages.push(totalPages);
-  }
-
-  return pages;
-};
 
 interface ProductForm {
   _id:string;
@@ -145,8 +116,18 @@ useEffect(() => {
       }
 
       // Update products state
-      setproducts(resp.data.products || resp.data);
-      setTotalPages(resp.data.totalPages || 1);
+      const newProducts = resp.data.products || resp.data;
+      const newTotalPages = resp.data.totalPages ? Number(resp.data.totalPages) : 1;
+      
+      console.log("FETCH RESPONSE:", {
+        activeCategory,
+        isDataArray: Array.isArray(resp.data),
+        totalPagesInResponse: resp.data.totalPages,
+        newTotalPages
+      });
+
+      setproducts(newProducts);
+      setTotalPages(newTotalPages);
 
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -161,8 +142,7 @@ useEffect(() => {
   fetchProducts();
 }, [activeCategory, page, limit]);
 
-
- 
+// console.log("RENDER ProductGrid: page=", page, "totalPages=", totalPages);
 
 
 
@@ -182,9 +162,12 @@ useEffect(() => {
           <div className="flex gap-2 flex-wrap">
 
               <button
-    onClick={() => setActiveCategory("all") }
-    className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-      activeCategory === "all"
+                onClick={() => {
+                  setActiveCategory("all");
+                  setPage(1);
+                }}
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                  activeCategory === "all"
         ? "bg-primary text-primary-foreground"
         : "bg-secondary text-secondary-foreground hover:bg-muted"
     }`}
@@ -195,7 +178,10 @@ useEffect(() => {
             {categories?.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.name)}
+                onClick={() => {
+                  setActiveCategory(cat.name);
+                  setPage(1);
+                }}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
                   activeCategory === cat.name
                     ? "bg-primary text-primary-foreground"
@@ -217,45 +203,55 @@ useEffect(() => {
           ))}
         </motion.div>
       </div>
-              <div className="flex items-center gap-2 mt-4 p-4" style={{ display: totalPages <= 1 ? "none" : "flex" }}>
-
-  {/* Prev */}
+      {totalPages > 1 && (
+        <div translate="no" className="flex flex-wrap items-center justify-left gap-4 mt-8 mb-4">
   <button
     onClick={() => setPage(prev => Math.max(prev - 1, 1))}
     disabled={page === 1}
-    className="px-3 py-1 border rounded disabled:opacity-50"
+    className="px-4 py-2 border rounded-md disabled:opacity-50 hover:bg-gray-50 transition-colors"
   >
     Prev
   </button>
 
-  {/* Page Numbers */}
-  {getVisiblePages().map((p, idx) =>
-    p === "..." ? (
-      <span key={idx} className="px-2 py-1 text-gray-500">
-        ...
-      </span>
-    ) : (
-      <button
-        key={p}
-        onClick={() => setPage(p as number)}
-        className={`px-3 py-1 border rounded ${
-          page === p ? "bg-[#5C00B3] text-white" : ""
-        }`}
-      >
-        {p}
-      </button>
-    )
-  )}
+  <span key={totalPages + "-" + page} className="text-sm font-medium text-gray-700">
+    Shop Page: {page} / {totalPages}
+  </span>
 
-  {/* Next */}
   <button
     onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-    disabled={page === totalPages}
-    className="px-3 py-1 border rounded disabled:opacity-50"
+    disabled={page === totalPages || totalPages === 0}
+    className="px-4 py-2 border rounded-md disabled:opacity-50 hover:bg-gray-50 transition-colors"
   >
     Next
   </button>
-</div>
+  
+  <div className="flex items-center gap-2 ml-4">
+    <span className="text-sm text-gray-600">Go to:</span>
+    <input
+      key={page}
+      type="number"
+      min={1}
+      max={totalPages}
+      defaultValue={page}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          const val = parseInt(e.currentTarget.value);
+          if (!isNaN(val) && val >= 1 && val <= totalPages) {
+            setPage(val);
+          }
+        }
+      }}
+      onBlur={(e) => {
+        const val = parseInt(e.currentTarget.value);
+        if (!isNaN(val) && val >= 1 && val <= totalPages) {
+          setPage(val);
+        }
+      }}
+      className="w-16 px-2 py-1 border rounded text-center outline-none"
+    />
+  </div>
+        </div>
+      )}
     </section>
   );
 };

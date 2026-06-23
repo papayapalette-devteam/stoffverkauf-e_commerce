@@ -104,10 +104,7 @@ interface Category {
 
           setcategories(resp.data.categories);
 
-        // Optional: if backend sends total count
-        if (resp.data) {
-          setTotalPages(resp.data.totalPages);
-        }
+        // Do not overwrite totalPages with category fetch!
 
       } catch (err: unknown) {
         if (axios.isAxiosError(err)) {
@@ -161,9 +158,9 @@ interface Category {
 
       setproducts(resp.data.products);
 
-      // Optional: if backend sends total count
+      // Update totalPages with fallback
       if (resp.data) {
-        setTotalPages(resp.data.totalPages);
+        setTotalPages(resp.data.totalPages ? Number(resp.data.totalPages) : 1);
       }
 
     } catch (err: unknown) {
