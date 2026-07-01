@@ -43,12 +43,14 @@ const emptyPost: Omit<BlogPost, "_id"> = {
 const AdminContent = () => {
   const { lang } = useI18n();
   const de = lang === "de";
-  const [activeTab, setActiveTab] = useState<"sections" | "hero" | "blog" | "pages">("pages");
+  const [activeTab, setActiveTab] = useState<"sections" | "hero" | "video" | "fabric" | "blog" | "pages">("pages");
   const [sections, setSections] = useState<any[]>([]);
   const [loadingSections, setLoadingSections] = useState(true);
   const [heroForm, setHeroForm] = useState<any>({
     slides: [] // array of { image, badge, title1, title2, subtitle, cta }
   });
+  const [videoForm, setVideoForm] = useState<any>({ url: "" });
+  const [fabricForm, setFabricForm] = useState<any>({ boxes: [] });
 
   // Blog state
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -103,8 +105,18 @@ const AdminContent = () => {
           setHeroForm({ slides: [] });
         }
       }
+      
+      const video = res.data.find((s: any) => s.id === "homepage_video");
+      if (video && video.data) {
+        setVideoForm(video.data);
+      }
+      
+      const fabric = res.data.find((s: any) => s.id === "fabric_boxes");
+      if (fabric && fabric.data) {
+        setFabricForm(fabric.data);
+      }
     } catch (err) {
-      console.error("Failed to fetch hero data", err);
+      console.error("Failed to fetch hero/video/fabric data", err);
     }
   };
 
@@ -158,6 +170,75 @@ const AdminContent = () => {
     } catch (err) {
       toast.error("Failed to save hero data");
     }
+  };
+
+  const saveVideoData = async () => {
+    try {
+      await api.put("/api/home-sections/homepage_video", {
+        data: videoForm,
+        title: "Homepage Video",
+        type: "video",
+        enabled: true
+      });
+      toast.success(de ? "Video aktualisiert" : "Video updated");
+    } catch (err) {
+      toast.error("Failed to save video data");
+    }
+  };
+
+  const saveFabricData = async () => {
+    try {
+      await api.put("/api/home-sections/fabric_boxes", {
+        data: fabricForm,
+        title: "Fabric Boxes",
+        type: "fabric_boxes",
+        enabled: true
+      });
+      toast.success(de ? "Fabric Boxes aktualisiert" : "Fabric Boxes updated");
+    } catch (err) {
+      toast.error("Failed to save fabric boxes data");
+    }
+  };
+
+  const handleFabricImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    try {
+      setUploading(true);
+      const urls = await uploadFiles(Array.from(files));
+      if (urls && urls.length > 0) {
+        if (index !== undefined) {
+            const newBoxes = [...(fabricForm.boxes || [])];
+            newBoxes[index].image = urls[0];
+            setFabricForm({...fabricForm, boxes: newBoxes});
+        } else {
+            setFabricForm((prev: any) => ({
+              ...prev,
+              boxes: [
+                ...(prev.boxes || []),
+                ...urls.map((url: string) => ({
+                  image: url,
+                  title: "",
+                  link: ""
+                }))
+              ]
+            }));
+        }
+        toast.success(de ? "Bild hochgeladen" : "Image uploaded");
+      }
+    } catch (err) {
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeFabricBox = (index: number) => {
+    setFabricForm((prev: any) => ({
+      ...prev,
+      boxes: (prev.boxes || []).filter((_: any, i: number) => i !== index)
+    }));
   };
 
   const toggleSection = async (id: string, currentStatus: boolean) => {
@@ -350,6 +431,8 @@ const handleDeletePost = async (id: string) => {
     { id: "pages" as const, label: de ? "Seiten" : "Pages" },
     { id: "sections" as const, label: de ? "Sektionen" : "Sections" },
     { id: "hero" as const, label: "Hero Banner" },
+    { id: "video" as const, label: "Video Box" },
+    { id: "fabric" as const, label: "Fabric Boxes" },
     { id: "blog" as const, label: "Blog" },
   ];
 
@@ -524,6 +607,138 @@ const handleDeletePost = async (id: string) => {
           <div className="mt-6">
             <button onClick={saveHeroData} className="bg-primary text-primary-foreground w-full py-3 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
               {de ? "Aktualisieren" : "Update Hero Banner"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "video" && (
+        <div className="bg-card rounded-xl border border-border p-6 shadow-card max-w-2xl">
+          <div className="mb-6 space-y-4">
+             <div>
+                <label className="text-sm font-medium text-foreground block mb-1">
+                  {de ? "Video URL (YouTube, Vimeo oder direkte MP4)" : "Video URL (YouTube, Vimeo, or MP4 URL)"}
+                </label>
+                <input 
+                  value={videoForm.url || ""} 
+                  onChange={e => setVideoForm({...videoForm, url: e.target.value})} 
+                  className={inputClass} 
+                  placeholder="https://..."
+                />
+             </div>
+             {videoForm.url && (
+                <div className="aspect-video w-full rounded-lg overflow-hidden border border-border bg-muted mt-4">
+                  {videoForm.url.includes("youtube.com") || videoForm.url.includes("youtu.be") ? (
+                    <iframe 
+                      src={`https://www.youtube.com/embed/${videoForm.url.split('v=')[1]?.split('&')[0] || videoForm.url.split('/').pop()}`} 
+                      className="w-full h-full" 
+                      allowFullScreen 
+                    />
+                  ) : videoForm.url.includes("vimeo.com") ? (
+                    <iframe 
+                      src={`https://player.vimeo.com/video/${videoForm.url.split('/').pop()}`} 
+                      className="w-full h-full" 
+                      allowFullScreen 
+                    />
+                  ) : (
+                    <video src={videoForm.url} controls className="w-full h-full object-cover" />
+                  )}
+                </div>
+             )}
+          </div>
+          <div className="mt-6">
+            <button onClick={saveVideoData} className="bg-primary text-primary-foreground w-full py-3 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+              {de ? "Video Aktualisieren" : "Update Video Box"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "fabric" && (
+        <div className="bg-card rounded-xl border border-border p-6 shadow-card max-w-2xl">
+          <div className="mb-6 space-y-4">
+             <div className="p-4 border-2 border-dashed border-border rounded-xl text-center">
+                <ImageIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground mb-4">
+                   {de ? "Stoff-Boxen Bilder hinzufügen" : "Add Fabric Boxes"}
+                </p>
+                <input 
+                  type="file" 
+                  multiple 
+                  onChange={handleFabricImageUpload} 
+                  className="hidden" 
+                  id="fabric-file-upload" 
+                  accept="image/*"
+                />
+                <label 
+                  htmlFor="fabric-file-upload" 
+                  className="inline-block text-xs bg-secondary text-foreground px-4 py-2 rounded-lg font-semibold cursor-pointer hover:bg-muted"
+                >
+                  {uploading ? (de ? "Lade hoch..." : "Uploading...") : (de ? "Bilder hochladen" : "Upload Images")}
+                </label>
+             </div>
+
+             <div className="space-y-6">
+               {(fabricForm.boxes || []).map((box: any, index: number) => (
+                 <div key={index} className="relative p-4 border border-border bg-background rounded-xl shadow-sm">
+                    <button 
+                      onClick={() => removeFabricBox(index)}
+                      className="absolute top-2 right-2 p-1.5 bg-destructive text-white rounded-full transition-opacity z-10 hover:bg-destructive/90 shadow-md"
+                      title={de ? "Entfernen" : "Remove"}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <div className="w-full md:w-1/3 aspect-square rounded-lg overflow-hidden border border-border bg-muted shrink-0 relative group">
+                        <img src={box.image} alt={`Fabric ${index}`} className="w-full h-full object-cover" />
+                        <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                          <span className="text-white text-xs font-semibold">{de ? "Bild ändern" : "Change Image"}</span>
+                          <input 
+                            type="file" 
+                            onChange={(e) => handleFabricImageUpload(e, index)} 
+                            className="hidden" 
+                            accept="image/*"
+                          />
+                        </label>
+                      </div>
+                      
+                      <div className="flex-1 space-y-4">
+                        <div>
+                          <label className="text-sm font-medium text-foreground block mb-1">{de ? "Titel (z.B. Baumwolle)" : "Title (e.g. Cotton)"}</label>
+                          <input 
+                            value={box.title || ""} 
+                            onChange={e => {
+                              const newBoxes = [...fabricForm.boxes];
+                              newBoxes[index] = { ...newBoxes[index], title: e.target.value };
+                              setFabricForm({...fabricForm, boxes: newBoxes});
+                            }} 
+                            className={inputClass} 
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-foreground block mb-1">{de ? "Link URL" : "Link URL"}</label>
+                          <input 
+                            value={box.link || ""} 
+                            onChange={e => {
+                              const newBoxes = [...fabricForm.boxes];
+                              newBoxes[index] = { ...newBoxes[index], link: e.target.value };
+                              setFabricForm({...fabricForm, boxes: newBoxes});
+                            }} 
+                            className={inputClass} 
+                            placeholder="/category/baumwolle"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                 </div>
+               ))}
+             </div>
+          </div>
+
+          <div className="mt-6">
+            <button onClick={saveFabricData} className="bg-primary text-primary-foreground w-full py-3 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+              {de ? "Stoff-Boxen Aktualisieren" : "Update Fabric Boxes"}
             </button>
           </div>
         </div>
