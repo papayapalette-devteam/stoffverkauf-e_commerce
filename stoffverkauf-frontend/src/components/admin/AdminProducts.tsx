@@ -153,7 +153,12 @@ interface Category {
     try {
       setLoading(true);
       const resp = await api.get("/api/products/get-product", {
-        params: { page, limit, search },
+        params: { 
+          page, 
+          limit, 
+          search,
+          ...(categoryFilter !== "all" && { categories: categoryFilter })
+        },
       });
 
       setproducts(resp.data.products);
@@ -179,7 +184,7 @@ interface Category {
 
   useEffect(() => {
     fetchProducts();
-  }, [page, limit, search]);
+  }, [page, limit, search, categoryFilter]);
 
 // upload images
 
@@ -545,14 +550,14 @@ const handleSyncCloudinary = async () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder={de ? "Name oder SKU suchen..." : "Search by name or SKU..."}
               className="pl-10 pr-4 py-2 bg-secondary text-foreground placeholder:text-muted-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent w-64"
             />
           </div>
-          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="px-3 py-2 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+          <select value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }} className="px-3 py-2 bg-secondary text-foreground rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent">
             <option value="all">{de ? "Alle Kategorien" : "All Categories"}</option>
-            {/* {categories?.map(c => <option key={c} value={c}>{c}</option>)} */}
+            {categories?.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
           </select>
           <button
             onClick={() => setShowBulkImport(!showBulkImport)}

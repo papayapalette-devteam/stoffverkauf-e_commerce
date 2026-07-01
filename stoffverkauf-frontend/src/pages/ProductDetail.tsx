@@ -517,7 +517,9 @@ if (!product || !details) {
                 <span className="font-display text-3xl font-bold text-foreground">
                   {(product.salePrice || product.price).toFixed(2)} €
                 </span>
-                <span className="text-sm text-muted-foreground">{t("detail.perMeter")}</span>
+                {!["haberdashery", "patterns", "kurzwaren", "schnittmuster"].includes(product.category?.toLowerCase() || "") && (
+                  <span className="text-sm text-muted-foreground">{t("detail.perMeter")}</span>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mb-6">
                 {lang === "de" ? "inkl. 19% MwSt., zzgl." : "incl. 19% VAT, plus"}{" "}
@@ -553,7 +555,9 @@ if (!product || !details) {
                     className="w-16 py-3 font-body font-semibold text-foreground text-center bg-transparent focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                   <span className="pr-4 py-3 font-body font-semibold text-foreground text-center">
-                    {t("detail.meters")}
+                    {["haberdashery", "patterns", "kurzwaren", "schnittmuster"].includes(product.category?.toLowerCase() || "") 
+                      ? (lang === "de" ? "Stück" : "Pieces") 
+                      : t("detail.meters")}
                   </span>
                   <button
                     onClick={() => setMetersInput(Math.round((meters + 1) * 10) / 10 + "")}
@@ -574,20 +578,22 @@ if (!product || !details) {
               </div>
 
               {/* Sample order */}
-              {details.sampleAvailable && (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleOrderSample}
-                  className="w-full border-2 border-dashed border-accent text-primary-foreground bg-accent py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-accent/90 transition-colors mb-8"
-                >
-                  <Scissors className="w-5 h-5" />
-                  {t("detail.orderSample")} — {details.samplePrice?.toFixed(2) || 0} €
-                </motion.button>
+              {details.sampleAvailable && !["rapporte", "rapport", "pattern repeats", "pattern repeat"].includes(product.category?.toLowerCase() || "") && (
+                <>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleOrderSample}
+                    className="w-full border-2 border-dashed border-accent text-primary-foreground bg-accent py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-accent/90 transition-colors mb-8"
+                  >
+                    <Scissors className="w-5 h-5" />
+                    {t("detail.orderSample")} — {details.samplePrice?.toFixed(2) || 0} €
+                  </motion.button>
+                  <p className="text-xs text-foreground/60 text-center -mt-6 mb-8">
+                    {t("detail.sampleNote")}
+                  </p>
+                </>
               )}
-              <p className="text-xs text-foreground/60 text-center -mt-6 mb-8">
-                {t("detail.sampleNote")}
-              </p>
             </motion.div>
           </div>
 
