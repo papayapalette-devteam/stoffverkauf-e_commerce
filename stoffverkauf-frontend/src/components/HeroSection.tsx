@@ -18,28 +18,31 @@ const HeroSection = () => {
   const { t } = useI18n();
   const [current, setCurrent] = useState(0);
   const [heroData, setHeroData] = useState<any>(null);
+  const [videoData, setVideoData] = useState<any>(null);
 
   useEffect(() => {
     const fetchHero = async () => {
       try {
         const res = await api.get("/api/home-sections");
 
-        console.log(res);
-        
-
         const hero = res.data.find((s: any) => s.id === "hero");
         if (hero && hero.enabled && hero.data) {
           setHeroData(hero.data);
         }
+
+        const video = res.data.find((s: any) => s.id === "homepage_video");
+        if (video && video.enabled && video.data) {
+          setVideoData(video.data);
+        }
       } catch (err) {
-        console.error("Failed to fetch hero section", err);
+        console.error("Failed to fetch hero/video section", err);
       }
     };
     fetchHero();
   }, []);
 
-  const slides = heroData?.slides?.length > 0
-    ? heroData.slides.map((s: any, i: number) => ({ ...s, key: `dynamic-${i}` }))
+  let slides: any[] = heroData?.slides?.length > 0
+    ? heroData.slides.map((s: any, i: number) => ({ ...s, key: `dynamic-${i}`, type: 'image' }))
     : heroData?.images?.length > 0 
       ? heroData.images.map((img: string, i: number) => ({ 
           image: img, 
@@ -49,17 +52,39 @@ const HeroSection = () => {
           subtitle: heroData.subtitle,
           cta: heroData.cta1,
           link: heroData.link,
-          key: `dynamic-${i}` 
+          key: `dynamic-${i}`,
+          type: 'image'
         }))
-      : staticSlides;
+      : staticSlides.map(s => ({ ...s, type: 'image' }));
+
+  if (videoData && videoData.url) {
+    slides.push({
+       type: 'video',
+       url: videoData.url,
+       key: 'dynamic-video',
+       badge: "",
+       title2: "",
+       subtitle: "",
+       cta: "",
+       link: ""
+    });
+  }
 
   const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), [slides.length]);
   const prev = useCallback(() => setCurrent((c) => (c - 1 + slides.length) % slides.length), [slides.length]);
 
   useEffect(() => {
-    const timer = setInterval(next, 6000);
-    return () => clearInterval(timer);
-  }, [next]);
+    let timeout: NodeJS.Timeout;
+    if (slides[current]?.type === 'video') {
+      if (slides[current].url.includes("youtube.com") || slides[current].url.includes("youtu.be") || slides[current].url.includes("vimeo.com")) {
+        timeout = setTimeout(next, 30000); // Fallback for iframes
+      }
+      // For MP4, we rely on the onEnded event of the video element
+    } else {
+      timeout = setTimeout(next, 3000); // 6 seconds for images
+    }
+    return () => clearTimeout(timeout);
+  }, [current, next, slides]);
 
   return (
     <section className="relative overflow-hidden">
@@ -73,7 +98,17 @@ const HeroSection = () => {
           transition={{ duration: 0.8, ease: "easeInOut" }}
           className="absolute inset-0"
         >
-          {slides[current].link ? (
+          {slides[current].type === 'video' ? (
+            <div className="w-full h-full relative bg-black">
+              {slides[current].url.includes("youtube.com") || slides[current].url.includes("youtu.be") ? (
+                <iframe src={`https://www.youtube.com/embed/${slides[current].url.split('v=')[1]?.split('&')[0] || slides[current].url.split('/').pop()}?autoplay=1&mute=1`} className="w-full h-full object-contain" allowFullScreen />
+              ) : slides[current].url.includes("vimeo.com") ? (
+                <iframe src={`https://player.vimeo.com/video/${slides[current].url.split('/').pop()}?autoplay=1&muted=1`} className="w-full h-full object-contain" allowFullScreen />
+              ) : (
+                <video src={slides[current].url} autoPlay muted playsInline onEnded={next} className="w-full h-full object-contain" />
+              )}
+            </div>
+          ) : slides[current].link ? (
             <a href={slides[current].link} className="w-full h-full block cursor-pointer">
               <img
                 src={slides[current].image}

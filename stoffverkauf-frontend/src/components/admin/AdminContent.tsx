@@ -186,6 +186,27 @@ const AdminContent = () => {
     }
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    try {
+      setUploading(true);
+      const urls = await uploadFiles(Array.from(files));
+      if (urls && urls.length > 0) {
+        setVideoForm((prev: any) => ({
+          ...prev,
+          url: urls[0]
+        }));
+        toast.success(de ? "Video hochgeladen" : "Video uploaded");
+      }
+    } catch (err) {
+      toast.error(de ? "Fehler beim Hochladen" : "Failed to upload video");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const saveFabricData = async () => {
     try {
       await api.put("/api/home-sections/fabric_boxes", {
@@ -619,12 +640,27 @@ const handleDeletePost = async (id: string) => {
                 <label className="text-sm font-medium text-foreground block mb-1">
                   {de ? "Video URL (YouTube, Vimeo oder direkte MP4)" : "Video URL (YouTube, Vimeo, or MP4 URL)"}
                 </label>
-                <input 
-                  value={videoForm.url || ""} 
-                  onChange={e => setVideoForm({...videoForm, url: e.target.value})} 
-                  className={inputClass} 
-                  placeholder="https://..."
-                />
+                <div className="flex gap-2">
+                  <input 
+                    value={videoForm.url || ""} 
+                    onChange={e => setVideoForm({...videoForm, url: e.target.value})} 
+                    className={`${inputClass} flex-1`} 
+                    placeholder="https://..."
+                  />
+                  <input
+                    type="file"
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                    id="video-upload"
+                    accept="video/*"
+                  />
+                  <label
+                    htmlFor="video-upload"
+                    className="flex items-center justify-center bg-secondary text-foreground px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer hover:bg-muted whitespace-nowrap border border-border"
+                  >
+                    {uploading ? (de ? "Lade hoch..." : "Uploading...") : (de ? "Video Hochladen" : "Upload Video")}
+                  </label>
+                </div>
              </div>
              {videoForm.url && (
                 <div className="aspect-video w-full rounded-lg overflow-hidden border border-border bg-muted mt-4">
