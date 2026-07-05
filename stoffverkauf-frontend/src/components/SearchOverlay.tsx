@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, SlidersHorizontal, ArrowUpDown, Star, ShoppingBag, Heart, Check } from "lucide-react";
+import { Search, X, SlidersHorizontal, ArrowUpDown, Star, ShoppingBag, Heart, Check, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../../api";
 import { useCart, type Product } from "@/lib/cart-context";
@@ -484,14 +484,7 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
             <div className="flex-1 overflow-y-auto">
               <div className="container mx-auto px-4 lg:px-8 py-6">
                 <div className="flex items-center justify-between mb-6">
-                  <p className="text-sm text-muted-foreground">
-                    {totalResults} {lang === "de" ? "Ergebnisse" : "results"}
-                    {query && (
-                      <span>
-                        {" "}{lang === "de" ? "für" : "for"} <strong className="text-foreground">"{query}"</strong>
-                      </span>
-                    )}
-                  </p>
+                  <div></div>
                   {activeFilterCount > 0 && (
                     <button onClick={resetAll} className="text-xs text-accent font-semibold hover:underline hidden md:block">
                       {lang === "de" ? "Alle Filter zurücksetzen" : "Reset all filters"}
@@ -525,7 +518,16 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                   </div>
                 )}
 
-                {filtered.length === 0 ? (
+                {isLoading && (
+                  <div className="text-center py-20 flex flex-col items-center justify-center">
+                    <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                    <p className="text-sm text-muted-foreground">
+                      {lang === "de" ? "Produkte werden geladen..." : "Loading products..."}
+                    </p>
+                  </div>
+                )}
+                
+                {!isLoading && filtered.length === 0 && (
                   <div className="text-center py-20">
                     <Search className="w-12 h-12 text-muted mx-auto mb-4" />
                     <h3 className="font-display text-xl font-bold text-foreground mb-2">
@@ -535,8 +537,9 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                       {lang === "de" ? "Versuchen Sie andere Suchbegriffe oder Filter" : "Try different search terms or filters"}
                     </p>
                   </div>
-                ) : (
-                  <div className="space-y-6">
+                )}
+
+                <div className={`space-y-6 ${(!isLoading && filtered.length > 0) ? 'block' : 'hidden'}`}>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {filtered.map((product, i) => {
                         const wishlisted = isInWishlist(product._id);
@@ -605,28 +608,56 @@ const SearchOverlay = ({ isOpen, onClose }: SearchOverlayProps) => {
                     
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
-                      <div className="flex items-center justify-center gap-4 mt-8 pb-4">
-                        <button
-                          onClick={() => setPage(p => Math.max(1, p - 1))}
-                          disabled={page === 1}
-                          className="px-4 py-2 text-sm font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {lang === "de" ? "Zurück" : "Previous"}
-                        </button>
-                        <span className="text-sm text-muted-foreground font-medium">
-                          {lang === "de" ? "Seite" : "Page"} {page} {lang === "de" ? "von" : "of"} {totalPages}
-                        </span>
-                        <button
-                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                          disabled={page === totalPages}
-                          className="px-4 py-2 text-sm font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {lang === "de" ? "Weiter" : "Next"}
-                        </button>
+                      <div className="flex items-center justify-between mt-8 pb-4">
+                        <div className="flex items-center gap-6">
+                          <span className="text-sm text-muted-foreground font-medium" translate="no">
+                            {lang === "de" ? "Seite" : "Page"} <span className="text-foreground mx-1">{page}</span> {lang === "de" ? "von" : "of"} <span className="text-foreground mx-1">{totalPages}</span>
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground" translate="no">{lang === "de" ? "Gehe zu:" : "Go to:"}</span>
+                            <input 
+                              key={page}
+                              type="number" 
+                              min={1} 
+                              max={totalPages}
+                              defaultValue={page}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  let val = Number(e.currentTarget.value);
+                                  if (val < 1) val = 1;
+                                  if (val > totalPages) val = totalPages;
+                                  setPage(val);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                let val = Number(e.target.value);
+                                if (val < 1) val = 1;
+                                if (val > totalPages) val = totalPages;
+                                setPage(val);
+                              }}
+                              className="w-16 px-2 py-1 text-sm border rounded-md bg-background focus:ring-1 focus:ring-accent focus:border-accent outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {lang === "de" ? "Zurück" : "Previous"}
+                          </button>
+                          <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {lang === "de" ? "Weiter" : "Next"}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
-                )}
               </div>
             </div>
           </div>

@@ -6,9 +6,11 @@ import { toast } from "sonner";
 import api from "../../api";
 import axios from "axios";
 import { log } from "console";
+import { Loader2 } from "lucide-react";
 
 const ProductGrid = () => {
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [loading, setLoading] = useState(false);
   const { t } = useI18n();
 
 
@@ -100,6 +102,7 @@ interface ProductVariant {
 const [products, setproducts] = useState<ProductForm[]>([]);
 useEffect(() => {
   const fetchProducts = async () => {
+    setLoading(true);
     try {
       let resp;
 
@@ -136,6 +139,8 @@ useEffect(() => {
         toast.error("An unexpected error occurred while fetching products");
         console.error(err);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -194,14 +199,20 @@ useEffect(() => {
           </div>
         </div>
 
-        <motion.div
-          layout
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6"
-        >
-          {products?.map((product, index) => (
-            <ProductCard key={product._id} product={product} index={index} />
-          ))}
-        </motion.div>
+        {loading ? (
+          <div className="flex justify-center items-center py-20 min-h-[300px]">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <motion.div
+            layout
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6"
+          >
+            {products?.map((product, index) => (
+              <ProductCard key={product._id} product={product} index={index} />
+            ))}
+          </motion.div>
+        )}
       </div>
       {totalPages > 1 && (
         <div translate="no" className="flex flex-wrap items-center justify-left gap-4 mt-8 mb-4">

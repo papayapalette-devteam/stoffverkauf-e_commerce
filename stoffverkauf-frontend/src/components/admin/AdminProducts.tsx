@@ -1146,6 +1146,13 @@ const handleSyncCloudinary = async () => {
                     </td>
                   </tr>
                 ))
+              ) : loading ? (
+                <tr>
+                  <td colSpan={6} className="p-12 text-center text-muted-foreground">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+                    <p className="mt-2 text-sm">{de ? "Produkte werden geladen..." : "Loading products..."}</p>
+                  </td>
+                </tr>
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-muted-foreground">

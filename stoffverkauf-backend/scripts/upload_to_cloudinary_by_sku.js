@@ -60,13 +60,9 @@ async function uploadImages() {
 
         const imageUrl = result.secure_url;
         
-        // Add to product images if not already there
-        if (!product.images) {
-            product.images = [];
-        }
+        // Filter out local filenames saved by sync scripts
+        product.images = product.images ? product.images.filter(img => img.startsWith('http')) : [];
         
-        // Let's replace the first image or push to array. 
-        // It's safest to just set it as the first image if it's the main SKU image.
         if (!product.images.includes(imageUrl)) {
              product.images.unshift(imageUrl); 
         }
