@@ -2,8 +2,8 @@ import axios from "axios";
 
 const api = axios.create({
   // baseURL: "http://localhost:5000",
-  // baseURL: "https://stoffverkauf-e-commerce-1.onrender.com"
-  baseURL: "https://pieces-circumstances-newspapers-hansen.trycloudflare.com"
+  baseURL: "https://stoffverkauf-e-commerce-1.onrender.com"
+  // baseURL: "https://pieces-circumstances-newspapers-hansen.trycloudflare.com"
 });
 
 api.interceptors.request.use((config) => {
